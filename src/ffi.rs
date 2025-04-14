@@ -1,6 +1,7 @@
 //! C ABI bindings to Modal.
 //!
-//! This is the public "extern" API, discovered by cbindgen.
+//! This is the public "extern" API, discovered by cbindgen. We use this from Go
+//! and any other languages that support C FFI.
 
 #![allow(unsafe_code)]
 
@@ -24,11 +25,6 @@ type DoFn = unsafe extern "C" fn(x: i32, y: i32) -> i32;
 
 /// Add two numbers.
 #[unsafe(no_mangle)]
-pub extern "C" fn add_two_numbers(x: i32, y: i32) {
-    // Initialize the runtime.
-    let _ = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(1)
-        .enable_all()
-        .build()
-        .unwrap();
+pub extern "C" fn add_two_numbers(x: i32, y: i32) -> i32 {
+    x + y
 }
