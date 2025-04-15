@@ -6,6 +6,7 @@
     "lib": ["ES2022"],
     "strict": true,
     "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "noEmit": true

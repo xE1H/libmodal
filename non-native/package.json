@@ -2,8 +2,15 @@
   "name": "modal-non-native",
   "version": "0.0.0",
   "type": "module",
+  "dependencies": {
+    "long": "^5.3.1",
+    "nice-grpc": "^2.1.12",
+    "protobufjs": "^7.5.0"
+  },
   "devDependencies": {
     "@types/node": "^22.14.1",
+    "grpc-tools": "^1.13.0",
+    "ts-proto": "^2.7.0",
     "tsx": "^4.19.3",
     "typescript": "~5.8.3"
   }
