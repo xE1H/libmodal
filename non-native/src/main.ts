@@ -1,5 +1,6 @@
 import { NetworkAccess_NetworkAccessType } from "../proto/modal_proto/api.ts";
 import { client } from "./client.ts";
+import { App, Image } from "./modal.ts";
 
 const resp = await client.clientHello({});
 console.log(resp);
@@ -22,3 +23,16 @@ const sandboxCreateResp = await client.sandboxCreate({
   },
 });
 console.log(sandboxCreateResp);
+
+const app = await App.lookup("my-sandboxes");
+const image = await Image.fromRegistry("node:22");
+
+const sb = await app.createSandbox(image);
+
+const p = await sb.exec(["echo", "hello", "world"], {
+  stdout: "pipe",
+  stderr: "ignore",
+});
+
+console.log(await p.stdout.readText());
+await p.wait();
