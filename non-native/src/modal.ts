@@ -1,8 +1,10 @@
+import { ObjectCreationType } from "../proto/modal_proto/api.ts";
 import { client } from "./client.ts";
 import { ModalReadStream, ModalWriteStream } from "./streams.ts";
 
 export type LookupOptions = {
   environment?: string;
+  createIfMissing?: boolean;
 };
 
 export class App {
@@ -12,11 +14,14 @@ export class App {
     this.appId = appId;
   }
 
-  /** Lookup a deployed app by name. */
+  /** Lookup a deployed app by name, or create if it does not exist. */
   static async lookup(name: string, options: LookupOptions = {}): Promise<App> {
     const resp = await client.appGetOrCreate({
       appName: name,
       environmentName: options.environment,
+      objectCreationType: options.createIfMissing
+        ? ObjectCreationType.OBJECT_CREATION_TYPE_CREATE_IF_MISSING
+        : ObjectCreationType.OBJECT_CREATION_TYPE_UNSPECIFIED,
     });
     return new App(resp.appId);
   }
@@ -34,7 +39,7 @@ export class Image {
   }
 
   static async fromRegistry(tag: string): Promise<Image> {
-    return new Image("im-123");
+    return new Image("im-5aQ3SQqr6K9kru9XUcoPM7"); // TODO
   }
 }
 
