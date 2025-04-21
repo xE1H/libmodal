@@ -1,4 +1,3 @@
-import { BufferSource } from "stream/web";
 import {
   FileDescriptor,
   NetworkAccess_NetworkAccessType,
@@ -115,7 +114,7 @@ export class Sandbox {
   async exec(
     cmd: string[],
     options: ExecOptions & { mode: "binary" }
-  ): Promise<ContainerProcess<BufferSource>>;
+  ): Promise<ContainerProcess<Uint8Array>>;
 
   async exec(
     cmd: string[],
@@ -151,7 +150,7 @@ export class Sandbox {
   }
 }
 
-class ContainerProcess<R extends string | BufferSource = any> {
+class ContainerProcess<R extends string | Uint8Array = any> {
   stdin: ModalWriteStream<R>;
   stdout: ModalReadStream<R>;
   stderr: ModalReadStream<R>;

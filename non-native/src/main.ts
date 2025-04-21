@@ -17,4 +17,5 @@ const p = await sb.exec(["echo", "hello", "world"], {
 });
 
 console.log(await p.stdout.readText());
+
 await p.wait();

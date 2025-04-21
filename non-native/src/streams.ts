@@ -1,5 +1,3 @@
-import { BufferSource } from "node:stream/web";
-
 /**
  * Wrapper around `ReadableStream` with convenience functions.
  *
@@ -40,7 +38,7 @@ export interface ModalWriteStream<R = any> extends WritableStream<R> {
   writeBytes(bytes: Uint8Array): Promise<void>;
 }
 
-export function toModalReadStream<R extends string | BufferSource = any>(
+export function toModalReadStream<R extends string | Uint8Array = any>(
   stream: ReadableStream<R>
 ): ModalReadStream<R> {
   return Object.assign(stream, {
@@ -54,12 +52,7 @@ export function toModalReadStream<R extends string | BufferSource = any>(
           if (value) {
             if (typeof value === "string") chunks.push(value);
             else {
-              chunks.push(
-                decoder.decode(
-                  value instanceof ArrayBuffer ? value : value.buffer,
-                  { stream: true }
-                )
-              );
+              chunks.push(decoder.decode(value.buffer, { stream: true }));
             }
           }
           if (done) {
@@ -83,9 +76,7 @@ export function toModalReadStream<R extends string | BufferSource = any>(
             if (typeof value === "string") {
               chunks.push(new TextEncoder().encode(value));
             } else {
-              const buffer =
-                value instanceof ArrayBuffer ? value : value.buffer;
-              chunks.push(new Uint8Array(buffer));
+              chunks.push(value);
             }
           }
           if (done) break;
@@ -109,7 +100,7 @@ export function toModalReadStream<R extends string | BufferSource = any>(
   });
 }
 
-export function toModalWriteStream<R extends string | BufferSource = any>(
+export function toModalWriteStream<R extends string | Uint8Array = any>(
   stream: WritableStream<R>
 ): ModalWriteStream<R> {
   return Object.assign(stream, {
