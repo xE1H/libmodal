@@ -1,4 +1,7 @@
-import { ObjectCreationType } from "../proto/modal_proto/api.ts";
+import {
+  NetworkAccess_NetworkAccessType,
+  ObjectCreationType,
+} from "../proto/modal_proto/api.ts";
 import { client } from "./client.ts";
 import { ModalReadStream, ModalWriteStream } from "./streams.ts";
 
@@ -7,8 +10,14 @@ export type LookupOptions = {
   createIfMissing?: boolean;
 };
 
+export type SandboxCreateOptions = {
+  cpu?: number; // in physical cores
+  memory?: number; // in MB
+  timeout?: number; // in seconds
+};
+
 export class App {
-  appId: string;
+  readonly appId: string;
 
   constructor(appId: string) {
     this.appId = appId;
@@ -26,20 +35,40 @@ export class App {
     return new App(resp.appId);
   }
 
-  async createSandbox(image: Image): Promise<Sandbox> {
-    return new Sandbox();
+  async createSandbox(
+    image: Image,
+    options: SandboxCreateOptions = {}
+  ): Promise<Sandbox> {
+    const createResp = await client.sandboxCreate({
+      appId: this.appId,
+      definition: {
+        entrypointArgs: ["sleep", "48h"], // Implicit in image builder version <=2024.10
+        imageId: image.imageId,
+        timeoutSecs: options.timeout ?? 600,
+        networkAccess: {
+          networkAccessType: NetworkAccess_NetworkAccessType.OPEN,
+        },
+        resources: {
+          // https://modal.com/docs/guide/resources
+          milliCpu: Math.round(1000 * (options.cpu ?? 0.125)),
+          memoryMb: options.memory ?? 128,
+        },
+      },
+    });
+
+    return new Sandbox(createResp.sandboxId);
   }
 }
 
 export class Image {
-  imageId: string;
+  readonly imageId: string;
 
   constructor(imageId: string) {
     this.imageId = imageId;
   }
 
   static async fromRegistry(tag: string): Promise<Image> {
-    return new Image("im-5aQ3SQqr6K9kru9XUcoPM7"); // TODO
+    return new Image("im-0MT7lcT3Kzh7DxZgVHgSRY"); // TODO
   }
 }
 
@@ -50,9 +79,14 @@ export class Image {
 export type StdioBehavior = "pipe" | "ignore";
 
 export class Sandbox {
+  readonly sandboxId: string;
   stdin: ModalWriteStream<string>;
   stdout: ModalReadStream<string>;
   stderr: ModalReadStream<string>;
+
+  constructor(sandboxId: string) {
+    this.sandboxId = sandboxId;
+  }
 
   async exec(
     cmd: string[],
