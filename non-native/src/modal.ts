@@ -148,6 +148,11 @@ export class Sandbox {
 
     return new ContainerProcess(resp.execId, options);
   }
+
+  async terminate(): Promise<void> {
+    await client.sandboxTerminate({ sandboxId: this.sandboxId });
+    this.#taskId = undefined; // Reset task ID after termination
+  }
 }
 
 class ContainerProcess<R extends string | Uint8Array = any> {
