@@ -26,3 +26,9 @@ Not going to mess with `tsup` or other bundlers.
 ## gRPC support
 
 We're using `nice-grpc` because the `@grpc/grpc-js` library kind of sucks, it doesn't even use promises? What's going on with this part of the ecosystem.
+
+## Unimplemented features
+
+- Line buffering (`by_line=True` in the Python client)
+- Distinguishing different failed status codes in streaming RPCs
+- gRPC retries of any kind

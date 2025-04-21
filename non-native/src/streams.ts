@@ -40,7 +40,7 @@ export interface ModalWriteStream<R = any> extends WritableStream<R> {
   writeBytes(bytes: Uint8Array): Promise<void>;
 }
 
-export function toReadStream<R extends string | BufferSource = any>(
+export function toModalReadStream<R extends string | BufferSource = any>(
   stream: ReadableStream<R>
 ): ModalReadStream<R> {
   return Object.assign(stream, {
@@ -63,7 +63,7 @@ export function toReadStream<R extends string | BufferSource = any>(
             }
           }
           if (done) {
-            chunks.push(decoder.decode(null, { stream: false })); // may be empty
+            chunks.push(decoder.decode(undefined, { stream: false })); // may be empty
             break;
           }
         }
@@ -109,7 +109,7 @@ export function toReadStream<R extends string | BufferSource = any>(
   });
 }
 
-export function toWriteStream<R extends string | BufferSource = any>(
+export function toModalWriteStream<R extends string | BufferSource = any>(
   stream: WritableStream<R>
 ): ModalWriteStream<R> {
   return Object.assign(stream, {

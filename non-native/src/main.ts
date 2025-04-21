@@ -9,7 +9,7 @@ const app = await App.lookup("temp-libmodal", { createIfMissing: true });
 const image = await Image.fromRegistry("node:22");
 
 const sb = await app.createSandbox(image);
-console.log("sandbox:", sb);
+console.log("sandbox:", sb.sandboxId);
 
 const p = await sb.exec(["echo", "hello", "world"], {
   stdout: "pipe",
