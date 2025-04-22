@@ -1,0 +1,56 @@
+// Run a bunch of container exec commands, alerting of any output issues.
+
+import PQueue from "p-queue";
+import { App, Image } from "./modal.ts";
+
+const app = await App.lookup("temp-libmodal", { createIfMissing: true });
+const image = await Image.fromRegistry("python:3.13-slim");
+
+const sandboxes = [
+  await app.createSandbox(image),
+  await app.createSandbox(image),
+  await app.createSandbox(image),
+  await app.createSandbox(image),
+];
+
+try {
+  const expectedContent = Array.from({ length: 1000 }, (_, i) => `${i}\n`).join(
+    ""
+  );
+
+  const queue = new PQueue({ concurrency: 20 });
+
+  let success = 0;
+  let failure = 0;
+
+  for (let i = 0; i < 1000; i++) {
+    await queue.onEmpty();
+
+    queue.add(async () => {
+      const sb = sandboxes[i % sandboxes.length];
+      const p = await sb.exec(
+        ["python", "-c", "for i in range(1000): print(i)"],
+        {
+          stdout: "pipe",
+          stderr: "ignore",
+        }
+      );
+      const content = await p.stdout.readText();
+      if (content === expectedContent) {
+        success++;
+        console.log("Output matches expected content.", i);
+      } else {
+        failure++;
+        console.error("MISMATCH", i);
+      }
+    });
+  }
+
+  await queue.onIdle();
+  console.log("Success:", success);
+  console.log("Failure:", failure);
+} finally {
+  for (const sb of sandboxes) {
+    await sb.terminate();
+  }
+}
