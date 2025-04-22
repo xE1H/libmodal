@@ -20,9 +20,10 @@ const sandboxes = [
 ];
 
 try {
-  const expectedContent = Array.from({ length: 1000 }, (_, i) => `${i}\n`).join(
-    ""
-  );
+  const expectedContent = Array.from(
+    { length: 50000 },
+    (_, i) => `${i}\n`
+  ).join("");
 
   const queue = new PQueue({ concurrency: 50 });
 
@@ -35,7 +36,7 @@ try {
     queue.add(async () => {
       const sb = sandboxes[i % sandboxes.length];
       const p = await sb.exec(
-        ["python", "-c", "for i in range(1000): print(i)"],
+        ["python", "-c", "for i in range(50000): print(i)"],
         {
           stdout: "pipe",
           stderr: "ignore",
