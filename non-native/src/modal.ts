@@ -168,6 +168,18 @@ export class Sandbox {
     await client.sandboxTerminate({ sandboxId: this.sandboxId });
     this.#taskId = undefined; // Reset task ID after termination
   }
+
+  async wait(): Promise<number> {
+    while (true) {
+      const resp = await client.sandboxWait({
+        sandboxId: this.sandboxId,
+        timeout: 55,
+      });
+      if (resp.result) {
+        return resp.result.exitcode;
+      }
+    }
+  }
 }
 
 class ContainerProcess<R extends string | Uint8Array = any> {
@@ -211,10 +223,17 @@ class ContainerProcess<R extends string | Uint8Array = any> {
     }
   }
 
-  /** Wait for process completion and returns the `returncode`. */
+  /** Wait for process completion and return the exit code. */
   async wait(): Promise<number> {
-    void this.#execId; // TODO
-    return 1;
+    while (true) {
+      const resp = await client.containerExecWait({
+        execId: this.#execId,
+        timeout: 55,
+      });
+      if (resp.completed) {
+        return resp.exitCode ?? 0;
+      }
+    }
   }
 }
 
