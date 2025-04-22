@@ -74,6 +74,7 @@ use std::hint::black_box;
 
 use serde_pickle as pickle;
 
+#[expect(dead_code)]
 fn not_main() {
     // Generate a 2D vector similar to Python's list comprehension
     let li: Vec<Vec<Vec<f64>>> = (0..1000)
