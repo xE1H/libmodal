@@ -11,6 +11,12 @@ const sandboxes = [
   await app.createSandbox(image),
   await app.createSandbox(image),
   await app.createSandbox(image),
+  await app.createSandbox(image),
+  await app.createSandbox(image),
+  await app.createSandbox(image),
+  await app.createSandbox(image),
+  await app.createSandbox(image),
+  await app.createSandbox(image),
 ];
 
 try {
@@ -18,12 +24,12 @@ try {
     ""
   );
 
-  const queue = new PQueue({ concurrency: 20 });
+  const queue = new PQueue({ concurrency: 50 });
 
   let success = 0;
   let failure = 0;
 
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < 10000; i++) {
     await queue.onEmpty();
 
     queue.add(async () => {
