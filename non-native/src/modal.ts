@@ -8,6 +8,7 @@ import {
   ModalReadStream,
   ModalWriteStream,
   toModalReadStream,
+  toModalWriteStream,
 } from "./streams.ts";
 
 export type LookupOptions = {
@@ -19,6 +20,7 @@ export type SandboxCreateOptions = {
   cpu?: number; // in physical cores
   memory?: number; // in MB
   timeout?: number; // in seconds
+  command?: string[]; // default is ["sleep", "48h"]
 };
 
 export class App {
@@ -47,7 +49,8 @@ export class App {
     const createResp = await client.sandboxCreate({
       appId: this.appId,
       definition: {
-        entrypointArgs: ["sleep", "48h"], // Implicit in image builder version <=2024.10
+        // Sleep default is implicit in image builder version <=2024.10
+        entrypointArgs: options.command ?? ["sleep", "48h"],
         imageId: image.imageId,
         timeoutSecs: options.timeout ?? 600,
         networkAccess: {
@@ -104,20 +107,32 @@ export class Sandbox {
 
   constructor(sandboxId: string) {
     this.sandboxId = sandboxId;
+
+    this.stdin = toModalWriteStream(inputStreamSb(sandboxId));
+    this.stdout = toModalReadStream(
+      ReadableStream.from(
+        outputStreamSb(sandboxId, FileDescriptor.FILE_DESCRIPTOR_STDOUT)
+      )
+    );
+    this.stderr = toModalReadStream(
+      ReadableStream.from(
+        outputStreamSb(sandboxId, FileDescriptor.FILE_DESCRIPTOR_STDERR)
+      )
+    );
   }
 
   async exec(
-    cmd: string[],
+    command: string[],
     options?: ExecOptions & { mode?: "text" }
   ): Promise<ContainerProcess<string>>;
 
   async exec(
-    cmd: string[],
+    command: string[],
     options: ExecOptions & { mode: "binary" }
   ): Promise<ContainerProcess<Uint8Array>>;
 
   async exec(
-    cmd: string[],
+    command: string[],
     options?: {
       mode?: StreamMode;
       stdout?: StdioBehavior;
@@ -143,7 +158,7 @@ export class Sandbox {
 
     const resp = await client.containerExec({
       taskId: this.#taskId,
-      command: cmd,
+      command,
     });
 
     return new ContainerProcess(resp.execId, options);
@@ -170,25 +185,18 @@ class ContainerProcess<R extends string | Uint8Array = any> {
 
     this.#execId = execId;
 
-    const stdoutStream =
-      stdout === "pipe"
-        ? ReadableStream.from(
-            outputStreamContainerProcess(
-              execId,
-              FileDescriptor.FILE_DESCRIPTOR_STDOUT
-            )
-          )
-        : new ReadableStream();
+    this.stdin = toModalWriteStream(inputStreamCp<R>(execId));
 
-    const stderrStream =
+    const stdoutStream = ReadableStream.from(
+      stdout === "pipe"
+        ? outputStreamCp(execId, FileDescriptor.FILE_DESCRIPTOR_STDOUT)
+        : []
+    );
+    const stderrStream = ReadableStream.from(
       stderr === "pipe"
-        ? ReadableStream.from(
-            outputStreamContainerProcess(
-              execId,
-              FileDescriptor.FILE_DESCRIPTOR_STDERR
-            )
-          )
-        : new ReadableStream();
+        ? outputStreamCp(execId, FileDescriptor.FILE_DESCRIPTOR_STDERR)
+        : []
+    );
 
     if (mode === "text") {
       this.stdout = toModalReadStream(
@@ -198,8 +206,8 @@ class ContainerProcess<R extends string | Uint8Array = any> {
         stderrStream.pipeThrough(new TextDecoderStream())
       ) as ModalReadStream<R>;
     } else {
-      this.stdout = toModalReadStream(stdoutStream) as any;
-      this.stderr = toModalReadStream(stderrStream) as any;
+      this.stdout = toModalReadStream(stdoutStream) as ModalReadStream<R>;
+      this.stderr = toModalReadStream(stderrStream) as ModalReadStream<R>;
     }
   }
 
@@ -211,7 +219,7 @@ class ContainerProcess<R extends string | Uint8Array = any> {
 }
 
 // Like _StreamReader with object_type == "sandbox".
-async function* outputStreamSandbox(
+async function* outputStreamSb(
   sandboxId: string,
   fileDescriptor: FileDescriptor
 ): AsyncIterable<string> {
@@ -246,7 +254,7 @@ async function* outputStreamSandbox(
 }
 
 // Like _StreamReader with object_type == "container_process".
-async function* outputStreamContainerProcess(
+async function* outputStreamCp(
   execId: string,
   fileDescriptor: FileDescriptor
 ): AsyncIterable<Uint8Array> {
@@ -281,4 +289,56 @@ async function* outputStreamContainerProcess(
       }
     }
   }
+}
+
+function inputStreamSb(sandboxId: string): WritableStream<string> {
+  let index = 1;
+  return new WritableStream<string>({
+    async write(chunk, controller) {
+      await client.sandboxStdinWrite({
+        sandboxId,
+        input: encodeIfString(chunk),
+        index,
+      });
+      index++;
+    },
+    async close() {
+      await client.sandboxStdinWrite({
+        sandboxId,
+        index,
+        eof: true,
+      });
+    },
+  });
+}
+
+function inputStreamCp<R extends string | Uint8Array>(
+  execId: string
+): WritableStream<R> {
+  let messageIndex = 1;
+  return new WritableStream<R>({
+    async write(chunk, controller) {
+      await client.containerExecPutInput({
+        execId,
+        input: {
+          message: encodeIfString(chunk),
+          messageIndex,
+        },
+      });
+      messageIndex++;
+    },
+    async close() {
+      await client.containerExecPutInput({
+        execId,
+        input: {
+          messageIndex,
+          eof: true,
+        },
+      });
+    },
+  });
+}
+
+function encodeIfString(chunk: Uint8Array | string): Uint8Array {
+  return typeof chunk === "string" ? new TextEncoder().encode(chunk) : chunk;
 }
