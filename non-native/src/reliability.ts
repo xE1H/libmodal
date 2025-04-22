@@ -36,14 +36,31 @@ try {
     queue.add(async () => {
       const sb = sandboxes[i % sandboxes.length];
       const p = await sb.exec(
-        ["python", "-c", "for i in range(50000): print(i)"],
+        [
+          "python",
+          "-c",
+          `
+import time
+import sys
+for i in range(50000):
+  if i % 1000 == 0:
+    time.sleep(0.01)
+  print(i)
+  print(i, file=sys.stderr)`,
+        ],
         {
           stdout: "pipe",
-          stderr: "ignore",
+          stderr: "pipe",
         }
       );
-      const content = await p.stdout.readText();
-      if (content === expectedContent) {
+      const [contentStdout, contentStderr] = await Promise.all([
+        p.stdout.readText(),
+        p.stderr.readText(),
+      ]);
+      if (
+        contentStdout === expectedContent &&
+        contentStderr === expectedContent
+      ) {
         success++;
         console.log("Output matches expected content.", i);
       } else {
