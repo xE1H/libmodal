@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { ModalClientDefinition } from "../proto/modal_proto/api.ts";
+import { ClientType, ModalClientDefinition } from "../proto/modal_proto/api.ts";
 import {
   CallOptions,
   ClientMiddlewareCall,
@@ -90,8 +90,11 @@ export const client = createClientFactory()
     options: CallOptions
   ) {
     options.metadata ??= new Metadata();
-    options.metadata.set("x-modal-client-type", "1");
-    options.metadata.set("x-modal-client-version", "424242");
+    options.metadata.set(
+      "x-modal-client-type",
+      String(ClientType.CLIENT_TYPE_LIBMODAL)
+    );
+    options.metadata.set("x-modal-client-version", "424242"); // "Client version is required"
     options.metadata.set("x-modal-token-id", profile.tokenId);
     options.metadata.set("x-modal-token-secret", profile.tokenSecret);
     return yield* call.next(call.request, options);
