@@ -9,10 +9,17 @@ const DEFAULT_SERVER_URL: &str = "https://api.modal.com:443";
 /// Active configuration profile for the client. Only one is active at a time.
 #[derive(Debug, Clone)]
 pub struct Profile {
-    server_url: String,
-    token_id: String,
-    token_secret: String,
-    environment: Option<String>,
+    /// URL of the Modal server.
+    pub server_url: String,
+
+    /// Token ID for authentication.
+    pub token_id: String,
+
+    /// Token secret for authentication.
+    pub token_secret: String,
+
+    /// Default environment name.
+    pub environment: Option<String>,
 }
 
 static CONFIG_FILE: LazyLock<crate::Result<Option<BTreeMap<String, ConfigFileProfile>>>> =

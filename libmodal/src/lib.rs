@@ -15,6 +15,9 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
+use std::sync::Arc;
+
+pub mod client;
 pub mod config;
 pub mod ffi;
 pub mod proto;
@@ -34,6 +37,17 @@ pub enum Error {
     /// Missing authentication credentials.
     #[error("missing auth, please set MODAL_TOKEN_ID / MODAL_TOKEN_SECRET or use ~/.modal.toml")]
     ConfigMissing,
+
+    /// gRPC error, such as connection issues or request failures.
+    #[error("gRPC error: {0}")]
+    GrpcError(Arc<tonic::transport::Error>),
+}
+
+impl From<tonic::transport::Error> for Error {
+    // Written out because `tonic::transport::Error` does not implement Clone.
+    fn from(err: tonic::transport::Error) -> Self {
+        Error::GrpcError(Arc::new(err))
+    }
 }
 
 /// Alias for a `Result` with the error type `libmodal::Error`.

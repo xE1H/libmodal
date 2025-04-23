@@ -880,6 +880,7 @@ dependencies = [
  "toml",
  "tonic",
  "tonic-build",
+ "tracing",
 ]
 
 [[package]]
