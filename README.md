@@ -14,8 +14,20 @@ The current plan is to export implementations of gRPC calls, as well as higher-l
 
 This is the Rust crate that's planned for implementing core Modal functionality. It should expose a reasonable public API, but we don't expect any direct consumers.
 
-There is an `ffi` module exposed with `cbindgen` for Go code, as well as a `napi` module for use with `napi-rs` to generate JavaScript bindings.
+There is an `ffi` module exposed with `cbindgen` for Go code, and you can also consume it directly. The primitives used by `modal-js`, which generates bindings to JavaScript with `napi-rs`.
+
+### `modal-js/` folder
+
+Native JavaScript client library based on `libmodal`.
+
+### `modal-python/` folder (planned)
+
+Native Python client library based on `libmodal`.
+
+### `modal-go/` folder (planned)
+
+Native Go client library based on `libmodal`.
 
 ## `non-native/` folder
 
-This contains non-native implementations of client libraries without using `libmodal`, for comparison. It's expected that we won't maintain this folder for long. If deciding to continue in this direction, we should probably start from scratch in a new `modal-client-js` repo.
+This contains a non-native implementation of a JS client library without using `libmodal`, for comparison. It's expected that we won't maintain this folder for long. If deciding to continue in this direction, we should probably start from scratch in a new `modal-client-js` repo.

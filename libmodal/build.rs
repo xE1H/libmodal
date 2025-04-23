@@ -6,14 +6,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let protos = vec![
         crate_dir
-            .join("modal-client/modal_proto/api.proto")
+            .join("../modal-client/modal_proto/api.proto")
             .canonicalize()?,
         crate_dir
-            .join("modal-client/modal_proto/options.proto")
+            .join("../modal-client/modal_proto/options.proto")
             .canonicalize()?,
     ];
 
-    let includes = vec![crate_dir.join("modal-client").canonicalize()?];
+    let includes = vec![crate_dir.join("../modal-client").canonicalize()?];
 
     tonic_build::configure()
         .generate_default_stubs(true)

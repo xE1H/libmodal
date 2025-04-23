@@ -1,21 +1,7 @@
-[package]
-name = "libmodal"
-version = "0.0.1"
-edition = "2024"
+[workspace]
+members = ["libmodal", "modal-js"]
+resolver = "3"
 
-[dependencies]
-anyhow = "1.0.56"
-bytes = "1.10.1"
-fastrand = "2.3.0"
-named-retry = "0.4.0"
-prost = "0.13.5"
-prost-types = "0.13.5"
-reqwest = { version = "0.12.15", features = ["rustls-tls"] }
-serde-pickle = "1.1.1"
-serde_json = "1.0.140"
-tokio = { version = "1.44.2", features = ["full"] }
-tonic = { version = "0.13.0", features = ["tls-webpki-roots"] }
-
-[build-dependencies]
-cbindgen = "0.28.0"
-tonic-build = "0.13.0"
+[profile.release]
+lto = "thin"
+strip = "symbols"

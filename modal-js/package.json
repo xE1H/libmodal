@@ -1,0 +1,50 @@
+{
+  "name": "modal",
+  "version": "0.0.0",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "modal",
+    "triples": {
+      "defaults": false,
+      "additional": [
+        "aarch64-apple-darwin",
+        "aarch64-unknown-linux-musl",
+        "aarch64-pc-windows-msvc",
+        "x86_64-apple-darwin",
+        "x86_64-pc-windows-msvc",
+        "x86_64-unknown-linux-gnu",
+        "x86_64-unknown-linux-musl",
+        "x86_64-unknown-freebsd",
+        "i686-pc-windows-msvc"
+      ]
+    }
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.4",
+    "vitest": "^3.1.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "vitest",
+    "universal": "napi universal",
+    "version": "napi version"
+  },
+  "optionalDependencies": {
+    "modal-darwin-arm64": "0.0.0",
+    "modal-darwin-x64": "0.0.0",
+    "modal-freebsd-x64": "0.0.0",
+    "modal-linux-arm64-musl": "0.0.0",
+    "modal-linux-x64-musl": "0.0.0",
+    "modal-win32-arm64-msvc": "0.0.0",
+    "modal-win32-ia32-msvc": "0.0.0",
+    "modal-win32-x64-msvc": "0.0.0"
+  }
+}
