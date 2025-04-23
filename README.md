@@ -6,9 +6,9 @@ Modal client library runtime and building blocks implemented in Rust.
 
 The current plan is to export implementations of gRPC calls, as well as higher-level app / sandbox / volumes APIs, to Python, Go, and JavaScript.
 
-- Python: [PyO3](https://pyo3.rs/)
-- Go: cgo with cbindgen and a completion queue API
 - Node/Deno/Bun: [napi-rs](https://napi.rs/)
+- Go: cgo with cbindgen and a completion queue API
+- Python: [PyO3](https://pyo3.rs/)
 
 ## `libmodal` crate
 
@@ -20,13 +20,13 @@ There is an `ffi` module exposed with `cbindgen` for Go code, and you can also c
 
 Native JavaScript client library based on `libmodal`.
 
-### `modal-python/` folder (planned)
-
-Native Python client library based on `libmodal`.
-
 ### `modal-go/` folder (planned)
 
 Native Go client library based on `libmodal`.
+
+### `modal-python/` folder (planned)
+
+Native Python client library based on `libmodal`.
 
 ## `non-native/` folder
 
