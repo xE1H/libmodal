@@ -4,7 +4,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{Context, bail};
 use bytes::Bytes;
 use libmodal::proto::{
     MAX_MESSAGE_SIZE,
@@ -94,7 +93,7 @@ fn not_main() {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let channel = Endpoint::new("https://api.modal.com")?
         .buffer_size(1 << 20) // Max concurrent requests
         .initial_stream_window_size(64 * 1024 * 1024) // 64 MB
@@ -167,12 +166,12 @@ async fn main() -> anyhow::Result<()> {
         let output = resp.outputs.into_iter().next().unwrap();
         let data_format = output.data_format();
         if data_format != DataFormat::Pickle {
-            bail!("bad data format {data_format:?}");
+            return Err(format!("bad data format {data_format:?}").into());
         }
-        let result = output.result.context("missing result")?;
+        let result = output.result.ok_or("missing result")?;
         let data = match result.data_oneof {
             Some(generic_result::DataOneof::Data(data)) => data,
-            _ => bail!("unsupported data (todo)"),
+            _ => return Err("unsupported data (todo)".into()),
         };
         let result: i32 = serde_pickle::from_slice(&data, DeOptions::new())?;
         println!("Result: {}", result);

@@ -15,5 +15,26 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod config;
 pub mod ffi;
 pub mod proto;
+
+/// User-facing errors across the Modal client.
+#[derive(Debug, Clone, thiserror::Error, strum::EnumDiscriminants)]
+#[strum_discriminants(
+    vis(pub),
+    name(ErrorVariant),
+    derive(strum::Display, strum::EnumString)
+)]
+pub enum Error {
+    /// Failed to load or parse configuration file.
+    #[error("failed to load or parse config file: {0}")]
+    ConfigError(String),
+
+    /// Missing authentication credentials.
+    #[error("missing auth, please set MODAL_TOKEN_ID / MODAL_TOKEN_SECRET or use ~/.modal.toml")]
+    ConfigMissing,
+}
+
+/// Alias for a `Result` with the error type `libmodal::Error`.
+pub type Result<T> = std::result::Result<T, Error>;
