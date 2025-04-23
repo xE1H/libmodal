@@ -38,15 +38,19 @@ pub enum Error {
     #[error("missing auth, please set MODAL_TOKEN_ID / MODAL_TOKEN_SECRET or use ~/.modal.toml")]
     ConfigMissing,
 
-    /// gRPC error, such as connection issues or request failures.
-    #[error("gRPC error: {0}")]
-    GrpcError(Arc<tonic::transport::Error>),
+    /// Transport error, such as connection issues or request failures.
+    #[error("{0}")]
+    GrpcError(#[from] tonic::Status),
+
+    /// Transport error, such as connection issues or request failures.
+    #[error("gRPC transport error: {0}")]
+    TransportError(Arc<tonic::transport::Error>),
 }
 
 impl From<tonic::transport::Error> for Error {
     // Written out because `tonic::transport::Error` does not implement Clone.
     fn from(err: tonic::transport::Error) -> Self {
-        Error::GrpcError(Arc::new(err))
+        Error::TransportError(Arc::new(err))
     }
 }
 
