@@ -2,6 +2,13 @@
 
 use std::{str::FromStr, sync::Arc, time::Duration};
 
+use libmodal_proto::{
+    MAX_MESSAGE_SIZE,
+    client::{
+        AppGetOrCreateRequest, ClientType, ObjectCreationType,
+        modal_client_client::ModalClientClient,
+    },
+};
 use tonic::{
     Request, Status,
     metadata::{MetadataMap, MetadataValue},
@@ -10,16 +17,7 @@ use tonic::{
 };
 use tracing::warn;
 
-use crate::{
-    config::Profile,
-    proto::{
-        MAX_MESSAGE_SIZE,
-        client::{
-            AppGetOrCreateRequest, ClientType, ObjectCreationType,
-            modal_client_client::ModalClientClient,
-        },
-    },
-};
+use crate::config::Profile;
 
 pub(crate) type GrpcClient = ModalClientClient<InterceptedService<Channel, AuthInterceptor>>;
 

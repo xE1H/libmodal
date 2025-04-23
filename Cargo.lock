@@ -867,6 +867,7 @@ dependencies = [
  "cbindgen",
  "dirs",
  "fastrand",
+ "libmodal-proto",
  "named-retry",
  "prost",
  "prost-types",
@@ -879,8 +880,17 @@ dependencies = [
  "tokio",
  "toml",
  "tonic",
- "tonic-build",
  "tracing",
+]
+
+[[package]]
+name = "libmodal-proto"
+version = "0.0.1"
+dependencies = [
+ "prost",
+ "prost-types",
+ "tonic",
+ "tonic-build",
 ]
 
 [[package]]

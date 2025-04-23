@@ -20,7 +20,6 @@ use std::sync::Arc;
 pub mod client;
 pub mod config;
 pub mod ffi;
-pub mod proto;
 
 /// User-facing errors across the Modal client.
 #[derive(Debug, Clone, thiserror::Error, strum::EnumDiscriminants)]

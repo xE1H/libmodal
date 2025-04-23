@@ -1,6 +1,12 @@
 [workspace]
-members = ["libmodal", "modal-js"]
+members = ["libmodal", "libmodal-proto", "modal-js"]
 resolver = "3"
+
+[workspace.dependencies]
+prost = "0.13.5"
+prost-types = "0.13.5"
+tonic = "0.13.0"
+tonic-build = "0.13.0"
 
 [profile.release]
 lto = "thin"

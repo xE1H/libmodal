@@ -1,6 +1,5 @@
-//! Generated protobuf client definitions.
+//! Generated protobuf client definitions for `libmodal`.
 
-#![allow(missing_docs)]
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 /// 100 MiB limit on gRPC messages, set to be the same as the API server.

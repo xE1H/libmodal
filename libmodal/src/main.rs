@@ -5,7 +5,7 @@ use std::{
 };
 
 use bytes::Bytes;
-use libmodal::proto::{
+use libmodal_proto::{
     MAX_MESSAGE_SIZE,
     client::{
         DataFormat, DeploymentNamespace, FunctionCallInvocationType, FunctionCallType,
