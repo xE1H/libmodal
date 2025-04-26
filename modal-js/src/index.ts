@@ -313,7 +313,7 @@ async function* outputStreamCp(
 function inputStreamSb(sandboxId: string): WritableStream<string> {
   let index = 1;
   return new WritableStream<string>({
-    async write(chunk, controller) {
+    async write(chunk) {
       await client.sandboxStdinWrite({
         sandboxId,
         input: encodeIfString(chunk),
@@ -336,7 +336,7 @@ function inputStreamCp<R extends string | Uint8Array>(
 ): WritableStream<R> {
   let messageIndex = 1;
   return new WritableStream<R>({
-    async write(chunk, controller) {
+    async write(chunk) {
       await client.containerExecPutInput({
         execId,
         input: {

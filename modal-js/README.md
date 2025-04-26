@@ -20,4 +20,3 @@ We're using `nice-grpc` because the `@grpc/grpc-js` library kind of sucks, it do
 
 - Line buffering (`by_line=True` in the Python client)
 - Distinguishing different failed status codes in streaming RPCs
-- Error handling in stdin `WritableStream` instance via its `controller`
