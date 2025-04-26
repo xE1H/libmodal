@@ -4,9 +4,11 @@ Current state: **alpha. not yet published.**
 
 Modal client libraries for JavaScript and Go.
 
-This repository provides lightweight alternatives to the [Modal Python Library](https://github.com/modal-labs/modal-client). They let you start sandboxes, read or edit volumes, and manage containers. However, they don't support running Modal Apps / Functions — those still need to be written in Python!
+This repository provides lightweight alternatives to the [Modal Python Library](https://github.com/modal-labs/modal-client). They let you start sandboxes (secure VMs), call Modal Functions, read or edit Volumes, and manage containers. However, they don't support deploying Modal Functions — those still need to be written in Python!
 
-## JavaScript
+These client libraries support different languages, but they all have the same features and API, so you can use Modal from any project.
+
+## JavaScript (`modal-js/`)
 
 Install this in any server-side Node.js / Deno / Bun project.
 
@@ -14,7 +16,7 @@ Install this in any server-side Node.js / Deno / Bun project.
 npm install modal
 ```
 
-## Go
+## Go (`modal-go/`)
 
 First, use `go get` to install the latest version of the library.
 
