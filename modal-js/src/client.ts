@@ -59,7 +59,7 @@ function getProfile(profileName?: string): Profile {
   }
   if (!profileName || !Object.hasOwn(config, profileName)) {
     throw new Error(
-      `Profile "${profileName}" not found in .modal.toml. Please set the MODAL_PROFILE environment variable or specify a valid profile.`
+      `Profile "${profileName}" not found in .modal.toml. Please set the MODAL_PROFILE environment variable or specify a valid profile.`,
     );
   }
   const profileData = config[profileName];
@@ -75,7 +75,7 @@ function getProfile(profileName?: string): Profile {
   };
   if (!profile.tokenId || !profile.tokenSecret) {
     throw new Error(
-      `Profile "${profileName}" is missing token_id or token_secret. Please set them in .modal.toml or as environment variables.`
+      `Profile "${profileName}" is missing token_id or token_secret. Please set them in .modal.toml or as environment variables.`,
     );
   }
   return profile as Profile; // safe to null-cast because of check above
@@ -87,12 +87,12 @@ const channel = createChannel("https://api.modal.com:443");
 export const client = createClientFactory()
   .use(async function* middleware<Request, Response>(
     call: ClientMiddlewareCall<Request, Response>,
-    options: CallOptions
+    options: CallOptions,
   ) {
     options.metadata ??= new Metadata();
     options.metadata.set(
       "x-modal-client-type",
-      String(ClientType.CLIENT_TYPE_LIBMODAL)
+      String(ClientType.CLIENT_TYPE_LIBMODAL),
     );
     options.metadata.set("x-modal-client-version", "424242"); // "Client version is required"
     options.metadata.set("x-modal-token-id", profile.tokenId);

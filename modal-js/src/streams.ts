@@ -39,7 +39,7 @@ export interface ModalWriteStream<R = any> extends WritableStream<R> {
 }
 
 export function toModalReadStream<R extends string | Uint8Array = any>(
-  stream: ReadableStream<R>
+  stream: ReadableStream<R>,
 ): ModalReadStream<R> {
   return Object.assign(stream, {
     async readText(): Promise<string> {
@@ -101,7 +101,7 @@ export function toModalReadStream<R extends string | Uint8Array = any>(
 }
 
 export function toModalWriteStream<R extends string | Uint8Array = any>(
-  stream: WritableStream<R>
+  stream: WritableStream<R>,
 ): ModalWriteStream<R> {
   return Object.assign(stream, {
     async writeText(text: string): Promise<void> {

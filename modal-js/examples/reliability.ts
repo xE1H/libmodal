@@ -22,7 +22,7 @@ const sandboxes = [
 try {
   const expectedContent = Array.from(
     { length: 50000 },
-    (_, i) => `${i}\n`
+    (_, i) => `${i}\n`,
   ).join("");
 
   const queue = new PQueue({ concurrency: 50 });
@@ -51,7 +51,7 @@ for i in range(50000):
         {
           stdout: "pipe",
           stderr: "pipe",
-        }
+        },
       );
       const [contentStdout, contentStderr] = await Promise.all([
         p.stdout.readText(),

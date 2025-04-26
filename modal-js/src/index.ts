@@ -44,7 +44,7 @@ export class App {
 
   async createSandbox(
     image: Image,
-    options: SandboxCreateOptions = {}
+    options: SandboxCreateOptions = {},
   ): Promise<Sandbox> {
     const createResp = await client.sandboxCreate({
       appId: this.appId,
@@ -111,24 +111,24 @@ export class Sandbox {
     this.stdin = toModalWriteStream(inputStreamSb(sandboxId));
     this.stdout = toModalReadStream(
       ReadableStream.from(
-        outputStreamSb(sandboxId, FileDescriptor.FILE_DESCRIPTOR_STDOUT)
-      )
+        outputStreamSb(sandboxId, FileDescriptor.FILE_DESCRIPTOR_STDOUT),
+      ),
     );
     this.stderr = toModalReadStream(
       ReadableStream.from(
-        outputStreamSb(sandboxId, FileDescriptor.FILE_DESCRIPTOR_STDERR)
-      )
+        outputStreamSb(sandboxId, FileDescriptor.FILE_DESCRIPTOR_STDERR),
+      ),
     );
   }
 
   async exec(
     command: string[],
-    options?: ExecOptions & { mode?: "text" }
+    options?: ExecOptions & { mode?: "text" },
   ): Promise<ContainerProcess<string>>;
 
   async exec(
     command: string[],
-    options: ExecOptions & { mode: "binary" }
+    options: ExecOptions & { mode: "binary" },
   ): Promise<ContainerProcess<Uint8Array>>;
 
   async exec(
@@ -137,7 +137,7 @@ export class Sandbox {
       mode?: StreamMode;
       stdout?: StdioBehavior;
       stderr?: StdioBehavior;
-    }
+    },
   ): Promise<ContainerProcess> {
     if (this.#taskId === undefined) {
       const resp = await client.sandboxGetTaskId({
@@ -145,12 +145,12 @@ export class Sandbox {
       });
       if (!resp.taskId) {
         throw new Error(
-          `Sandbox ${this.sandboxId} does not have a task ID. It may not be running.`
+          `Sandbox ${this.sandboxId} does not have a task ID. It may not be running.`,
         );
       }
       if (resp.taskResult) {
         throw new Error(
-          `Sandbox ${this.sandboxId} has already completed with result: ${resp.taskResult}`
+          `Sandbox ${this.sandboxId} has already completed with result: ${resp.taskResult}`,
         );
       }
       this.#taskId = resp.taskId;
@@ -202,20 +202,20 @@ class ContainerProcess<R extends string | Uint8Array = any> {
     const stdoutStream = ReadableStream.from(
       stdout === "pipe"
         ? outputStreamCp(execId, FileDescriptor.FILE_DESCRIPTOR_STDOUT)
-        : []
+        : [],
     );
     const stderrStream = ReadableStream.from(
       stderr === "pipe"
         ? outputStreamCp(execId, FileDescriptor.FILE_DESCRIPTOR_STDERR)
-        : []
+        : [],
     );
 
     if (mode === "text") {
       this.stdout = toModalReadStream(
-        stdoutStream.pipeThrough(new TextDecoderStream())
+        stdoutStream.pipeThrough(new TextDecoderStream()),
       ) as ModalReadStream<R>;
       this.stderr = toModalReadStream(
-        stderrStream.pipeThrough(new TextDecoderStream())
+        stderrStream.pipeThrough(new TextDecoderStream()),
       ) as ModalReadStream<R>;
     } else {
       this.stdout = toModalReadStream(stdoutStream) as ModalReadStream<R>;
@@ -240,7 +240,7 @@ class ContainerProcess<R extends string | Uint8Array = any> {
 // Like _StreamReader with object_type == "sandbox".
 async function* outputStreamSb(
   sandboxId: string,
-  fileDescriptor: FileDescriptor
+  fileDescriptor: FileDescriptor,
 ): AsyncIterable<string> {
   let lastIndex = "0-0";
   let completed = false;
@@ -275,7 +275,7 @@ async function* outputStreamSb(
 // Like _StreamReader with object_type == "container_process".
 async function* outputStreamCp(
   execId: string,
-  fileDescriptor: FileDescriptor
+  fileDescriptor: FileDescriptor,
 ): AsyncIterable<Uint8Array> {
   let lastIndex = 0;
   let completed = false;
@@ -332,7 +332,7 @@ function inputStreamSb(sandboxId: string): WritableStream<string> {
 }
 
 function inputStreamCp<R extends string | Uint8Array>(
-  execId: string
+  execId: string,
 ): WritableStream<R> {
   let messageIndex = 1;
   return new WritableStream<R>({
