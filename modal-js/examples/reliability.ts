@@ -1,7 +1,7 @@
 // Run a bunch of container exec commands, alerting of any output issues.
 
 import PQueue from "p-queue";
-import { App, Image } from "./modal.ts";
+import { App, Image } from "../src";
 
 const app = await App.lookup("temp-libmodal", { createIfMissing: true });
 const image = await Image.fromRegistry("python:3.13-slim");

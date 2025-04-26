@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { ClientType, ModalClientDefinition } from "../proto/modal_proto/api.ts";
+import { ClientType, ModalClientDefinition } from "../proto/modal_proto/api";
 import {
   CallOptions,
   ClientMiddlewareCall,

@@ -2,14 +2,14 @@ import {
   FileDescriptor,
   NetworkAccess_NetworkAccessType,
   ObjectCreationType,
-} from "../proto/modal_proto/api.ts";
-import { client } from "./client.ts";
+} from "../proto/modal_proto/api";
+import { client } from "./client";
 import {
   ModalReadStream,
   ModalWriteStream,
   toModalReadStream,
   toModalWriteStream,
-} from "./streams.ts";
+} from "./streams";
 
 export type LookupOptions = {
   environment?: string;
