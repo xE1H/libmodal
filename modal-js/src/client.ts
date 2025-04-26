@@ -114,7 +114,7 @@ type RetryOptions = {
   additionalStatusCodes?: Status[];
 };
 
-/** Middleware to retry transient errors and timeouts. */
+/** Middleware to retry transient errors and timeouts for unary requests. */
 const retryMiddleware: ClientMiddleware<RetryOptions> =
   async function* retryMiddleware(call, options) {
     const {
@@ -126,6 +126,11 @@ const retryMiddleware: ClientMiddleware<RetryOptions> =
       signal,
       ...restOptions
     } = options;
+
+    if (call.requestStream || call.responseStream || !retries) {
+      // Don't retry streaming calls, or if retries are disabled.
+      return yield* call.next(call.request, restOptions);
+    }
 
     const retryableCodes = new Set<number>([
       ...RETRYABLE_GRPC_STATUS_CODES,
