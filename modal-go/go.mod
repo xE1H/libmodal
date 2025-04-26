@@ -3,6 +3,8 @@ module github.com/modal-labs/libmodal/modal-go
 go 1.23.3
 
 require (
+	github.com/google/uuid v1.6.0
+	github.com/pelletier/go-toml/v2 v2.2.4
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
 )
