@@ -1,12 +1,9 @@
 {
   "recommendations": [
-    "charliermarsh.ruff",
     "dbaeumer.vscode-eslint",
     "EditorConfig.EditorConfig",
     "esbenp.prettier-vscode",
-    "ms-python.python",
-    "pbkit.vscode-pbkit",
-    "rust-lang.rust-analyzer",
-    "svelte.svelte-vscode"
+    "golang.go",
+    "pbkit.vscode-pbkit"
   ]
 }

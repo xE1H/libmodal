@@ -1,33 +1,33 @@
-# libmodal
+# libmodal: Lightweight [Modal](https://modal.com) client
 
-Current state: **DO NOT USE.**
+Current state: **alpha. not yet published.**
 
-Modal client library runtime and building blocks implemented in Rust.
+Modal client libraries for JavaScript and Go.
 
-The current plan is to export implementations of gRPC calls, as well as higher-level app / sandbox / volumes APIs, to Python, Go, and JavaScript.
+This repository provides lightweight alternatives to the [Modal Python Library](https://github.com/modal-labs/modal-client). They let you start sandboxes, read or edit volumes, and manage containers. However, they don't support running Modal Apps / Functions — those still need to be written in Python!
 
-- Node/Deno/Bun: [napi-rs](https://napi.rs/)
-- Go: cgo with cbindgen and a completion queue API
-- Python: [PyO3](https://pyo3.rs/)
+## JavaScript
 
-## `libmodal` crate
+Install this in any server-side Node.js / Deno / Bun project.
 
-This is the Rust crate that's planned for implementing core Modal functionality. It should expose a reasonable public API, but we don't expect any direct consumers.
+```bash
+npm install modal
+```
 
-There is an `ffi` module exposed with `cbindgen` for Go code, and you can also consume it directly. The primitives used by `modal-js`, which generates bindings to JavaScript with `napi-rs`.
+## Go
 
-### `modal-js/` folder
+First, use `go get` to install the latest version of the library.
 
-Native JavaScript client library based on `libmodal`.
+```bash
+go get -u github.com/modal-labs/libmodal/modal-go
+```
 
-### `modal-go/` folder (planned)
+Next, include Modal in your application:
 
-Native Go client library based on `libmodal`.
+```go
+import "github.com/modal-labs/libmodal/modal-go"
+```
 
-### `modal-python/` folder (planned)
+## License
 
-Native Python client library based on `libmodal`.
-
-## `non-native/` folder
-
-This contains a non-native implementation of a JS client library without using `libmodal`, for comparison. It's expected that we won't maintain this folder for long. If deciding to continue in this direction, we should probably start from scratch in a new `modal-client-js` repo.
+Code is released under the [MIT license](./LICENSE).

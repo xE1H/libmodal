@@ -1,6 +1,0 @@
-# Built NAPI modules
-modal.*.node
-
-# Other generated NAPI files
-/index.js
-/index.d.ts
