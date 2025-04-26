@@ -9,8 +9,7 @@ on:
 jobs:
   js:
     name: modal-js check and build
-    timeout-minutes: 5
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -32,3 +31,21 @@ jobs:
 
       - run: npm run build
         working-directory: ./modal-js
+
+  go:
+    name: modal-go build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          submodules: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: modal-go/go.sum
+
+      - run: go test -v ./...
+        working-directory: ./modal-go

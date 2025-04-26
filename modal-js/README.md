@@ -1,4 +1,4 @@
-# non-native
+# modal-js development
 
 Setup after cloning the repo with submodules:
 
