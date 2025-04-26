@@ -13,7 +13,7 @@ export type LookupOptions = {
 
 export type SandboxCreateOptions = {
   cpu?: number; // in physical cores
-  memory?: number; // in MB
+  memory?: number; // in MiB
   timeout?: number; // in seconds
   command?: string[]; // default is ["sleep", "48h"]
 };

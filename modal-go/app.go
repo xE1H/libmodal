@@ -2,6 +2,7 @@ package modal
 
 import (
 	"context"
+	"time"
 
 	proto "github.com/modal-labs/libmodal/modal-go/proto/modal_proto"
 )
@@ -15,6 +16,14 @@ type App struct {
 type LookupOptions struct {
 	Environment     string
 	CreateIfMissing bool
+}
+
+// SandboxCreateOptions are options for creating a Modal Sandbox.
+type SandboxCreateOptions struct {
+	CPU     int           // CPU request in physical cores.
+	Memory  int           // Memory request in MiB.
+	Timeout time.Duration // Maximum duration for the Sandbox.
+	Command []string      // Command to run in the Sandbox on startup.
 }
 
 // AppLookup looks up an existing App, or creates an empty one.
