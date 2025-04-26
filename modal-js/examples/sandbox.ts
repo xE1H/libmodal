@@ -1,4 +1,4 @@
-import { App, Image } from "../src";
+import { App, Image } from "modal";
 
 // const resp = await client.clientHello({});
 // console.log(resp);
