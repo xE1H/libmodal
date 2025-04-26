@@ -1,5 +1,4 @@
-import { readFile } from "node:fs/promises";
-import { ClientType, ModalClientDefinition } from "../proto/modal_proto/api";
+import { v4 as uuidv4 } from "uuid";
 import {
   CallOptions,
   ClientError,
@@ -10,96 +9,26 @@ import {
   Metadata,
   Status,
 } from "nice-grpc";
-import path from "node:path";
-import { homedir } from "node:os";
-import { parse as parseToml } from "smol-toml";
 
-/** Raw representation of the .modal.toml file. */
-interface Config {
-  [profile: string]: {
-    server_url?: string;
-    token_id?: string;
-    token_secret?: string;
-    environment?: string;
-    active?: boolean;
-  };
-}
-
-/** Resolved configuration object from `Config` and environment variables. */
-interface Profile {
-  serverUrl: string;
-  tokenId: string;
-  tokenSecret: string;
-  environment?: string;
-}
-
-async function readConfigFile(): Promise<Config> {
-  try {
-    const configContent = await readFile(path.join(homedir(), ".modal.toml"), {
-      encoding: "utf-8",
-    });
-    return parseToml(configContent) as Config;
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
-      return {} as Config;
-    }
-    throw new Error(`Failed to read or parse .modal.toml: ${error.message}`);
-  }
-}
-
-// Top-level await on module startup.
-const config: Config = await readConfigFile();
-
-function getProfile(profileName?: string): Profile {
-  profileName = profileName || process.env["MODAL_PROFILE"] || undefined;
-  if (!profileName) {
-    for (const [name, profileData] of Object.entries(config)) {
-      if (profileData.active) {
-        profileName = name;
-        break;
-      }
-    }
-  }
-  if (!profileName || !Object.hasOwn(config, profileName)) {
-    throw new Error(
-      `Profile "${profileName}" not found in .modal.toml. Please set the MODAL_PROFILE environment variable or specify a valid profile.`,
-    );
-  }
-  const profileData = config[profileName];
-
-  let profile: Partial<Profile> = {
-    serverUrl:
-      process.env["MODAL_SERVER_URL"] ||
-      profileData.server_url ||
-      "https://api.modal.com:443",
-    tokenId: process.env["MODAL_TOKEN_ID"] || profileData.token_id,
-    tokenSecret: process.env["MODAL_TOKEN_SECRET"] || profileData.token_secret,
-    environment: process.env["MODAL_ENVIRONMENT"] || profileData.environment,
-  };
-  if (!profile.tokenId || !profile.tokenSecret) {
-    throw new Error(
-      `Profile "${profileName}" is missing token_id or token_secret. Please set them in .modal.toml or as environment variables.`,
-    );
-  }
-  return profile as Profile; // safe to null-cast because of check above
-}
-
-const profile = getProfile(process.env["MODAL_PROFILE"] || undefined);
+import { ClientType, ModalClientDefinition } from "../proto/modal_proto/api";
+import { profile, Profile } from "./config";
 
 /** gRPC client middleware to add auth token to request. */
-async function* authMiddleware<Request, Response>(
-  call: ClientMiddlewareCall<Request, Response>,
-  options: CallOptions,
-) {
-  options.metadata ??= new Metadata();
-  options.metadata.set(
-    "x-modal-client-type",
-    String(ClientType.CLIENT_TYPE_LIBMODAL),
-  );
-  options.metadata.set("x-modal-client-version", "424242"); // "Client version is required"
-  options.metadata.set("x-modal-token-id", profile.tokenId);
-  options.metadata.set("x-modal-token-secret", profile.tokenSecret);
-  return yield* call.next(call.request, options);
+function authMiddleware(profile: Profile): ClientMiddleware {
+  return async function* authMiddleware<Request, Response>(
+    call: ClientMiddlewareCall<Request, Response>,
+    options: CallOptions,
+  ) {
+    options.metadata ??= new Metadata();
+    options.metadata.set(
+      "x-modal-client-type",
+      String(ClientType.CLIENT_TYPE_LIBMODAL),
+    );
+    options.metadata.set("x-modal-client-version", "424242"); // "Client version is required"
+    options.metadata.set("x-modal-token-id", profile.tokenId);
+    options.metadata.set("x-modal-token-secret", profile.tokenSecret);
+    return yield* call.next(call.request, options);
+  };
 }
 
 type TimeoutOptions = {
@@ -145,8 +74,118 @@ const timeoutMiddleware: ClientMiddleware<TimeoutOptions> =
     }
   };
 
-const channel = createChannel("https://api.modal.com:443");
+const RETRYABLE_GRPC_STATUS_CODES = [
+  Status.DEADLINE_EXCEEDED,
+  Status.UNAVAILABLE,
+  Status.CANCELLED,
+  Status.INTERNAL,
+  Status.UNKNOWN,
+];
+
+/** Sleep helper that can be cancelled via an AbortSignal. */
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(t);
+        reject(signal.reason);
+      },
+      { once: true },
+    );
+  });
+
+type RetryOptions = {
+  /** Number of retries to take. */
+  retries?: number;
+
+  /** Base delay in milliseconds. */
+  baseDelay?: number;
+
+  /** Maximum delay in milliseconds. */
+  maxDelay?: number;
+
+  /** Exponential factor to multiply successive delays. */
+  delayFactor?: number;
+
+  /** Additional status codes to retry. */
+  additionalStatusCodes?: Status[];
+};
+
+/** Middleware to retry transient errors and timeouts. */
+const retryMiddleware: ClientMiddleware<RetryOptions> =
+  async function* retryMiddleware(call, options) {
+    const {
+      retries = 3,
+      baseDelay = 100,
+      maxDelay = 1000,
+      delayFactor = 2,
+      additionalStatusCodes = [],
+      signal,
+      ...restOptions
+    } = options;
+
+    const retryableCodes = new Set<number>([
+      ...RETRYABLE_GRPC_STATUS_CODES,
+      ...additionalStatusCodes,
+    ]);
+
+    // One idempotency key for the whole call (all attempts).
+    const idempotencyKey = uuidv4();
+
+    const startTime = Date.now();
+    let attempt = 0;
+    let delayMs = baseDelay;
+
+    while (true) {
+      // Clone/augment metadata for this attempt.
+      const metadata = new Metadata(restOptions.metadata ?? {});
+
+      metadata.set("x-idempotency-key", idempotencyKey);
+      metadata.set("x-retry-attempt", String(attempt));
+      if (attempt > 0) {
+        metadata.set(
+          "x-retry-delay",
+          ((Date.now() - startTime) / 1000).toFixed(3),
+        );
+      }
+
+      try {
+        // Forward the call.
+        return yield* call.next(call.request, {
+          ...restOptions,
+          metadata,
+          signal,
+        });
+      } catch (err) {
+        // Immediately propagate non-retryable situations.
+        if (
+          !(err instanceof ClientError) ||
+          !retryableCodes.has(err.code) ||
+          attempt >= retries
+        ) {
+          throw err;
+        }
+
+        // Exponential back-off with a hard cap.
+        await sleep(delayMs, signal);
+        delayMs = Math.min(delayMs * delayFactor, maxDelay);
+        attempt += 1;
+      }
+    }
+  };
+
+// Ref: https://github.com/modal-labs/modal-client/blob/main/modal/_utils/grpc_utils.py
+const channel = createChannel("https://api.modal.com:443", undefined, {
+  "grpc.max_receive_message_length": 100 * 1024 * 1024,
+  "grpc.max_send_message_length": 100 * 1024 * 1024,
+  "grpc-node.flow_control_window": 64 * 1024 * 1024,
+});
+
 export const client = createClientFactory()
-  .use(authMiddleware)
+  .use(authMiddleware(profile))
+  .use(retryMiddleware)
   .use(timeoutMiddleware)
   .create(ModalClientDefinition, channel);

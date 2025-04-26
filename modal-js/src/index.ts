@@ -32,16 +32,13 @@ export class App {
 
   /** Lookup a deployed app by name, or create if it does not exist. */
   static async lookup(name: string, options: LookupOptions = {}): Promise<App> {
-    const resp = await client.appGetOrCreate(
-      {
-        appName: name,
-        environmentName: options.environment,
-        objectCreationType: options.createIfMissing
-          ? ObjectCreationType.OBJECT_CREATION_TYPE_CREATE_IF_MISSING
-          : ObjectCreationType.OBJECT_CREATION_TYPE_UNSPECIFIED,
-      },
-      { timeout: 10000 },
-    );
+    const resp = await client.appGetOrCreate({
+      appName: name,
+      environmentName: options.environment,
+      objectCreationType: options.createIfMissing
+        ? ObjectCreationType.OBJECT_CREATION_TYPE_CREATE_IF_MISSING
+        : ObjectCreationType.OBJECT_CREATION_TYPE_UNSPECIFIED,
+    });
     return new App(resp.appId);
   }
 
