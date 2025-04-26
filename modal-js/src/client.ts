@@ -183,7 +183,7 @@ const retryMiddleware: ClientMiddleware<RetryOptions> =
   };
 
 // Ref: https://github.com/modal-labs/modal-client/blob/main/modal/_utils/grpc_utils.py
-const channel = createChannel("https://api.modal.com:443", undefined, {
+const channel = createChannel(profile.serverUrl, undefined, {
   "grpc.max_receive_message_length": 100 * 1024 * 1024,
   "grpc.max_send_message_length": 100 * 1024 * 1024,
   "grpc-node.flow_control_window": 64 * 1024 * 1024,

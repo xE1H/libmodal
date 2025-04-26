@@ -19,31 +19,28 @@ import (
 	"context"
 	"crypto/tls"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	proto "github.com/modal-labs/libmodal/modal-go/proto/modal_proto"
 )
 
-// TimeoutCallOption carries a per-RPC absolute timeout.
-type TimeoutCallOption struct {
+// timeoutCallOption carries a per-RPC absolute timeout.
+type timeoutCallOption struct {
 	grpc.EmptyCallOption
 	timeout time.Duration
 }
 
-// WithTimeout attaches a timeout to a single RPC.
-func WithTimeout(d time.Duration) TimeoutCallOption {
-	return TimeoutCallOption{timeout: d}
-}
-
-// RetryCallOption carries per-RPC retry overrides.
-type RetryCallOption struct {
+// retryCallOption carries per-RPC retry overrides.
+type retryCallOption struct {
 	grpc.EmptyCallOption
 	retries         *int
 	baseDelay       *time.Duration
@@ -51,9 +48,6 @@ type RetryCallOption struct {
 	delayFactor     *float64
 	additionalCodes []codes.Code
 }
-
-// WithRetry overrides just the retry *count* (other parameters keep defaults).
-func WithRetry(n int) RetryCallOption { return RetryCallOption{retries: &n} }
 
 const (
 	apiEndpoint            = "api.modal.com:443"
@@ -72,12 +66,30 @@ var defaultRetryable = map[codes.Code]struct{}{
 	codes.Unknown:          {},
 }
 
-// NewClient dials api.modal.com with auth/timeout/retry interceptors installed.
-// It returns (conn, stub).  Close the conn when done.
-func NewClient() (*grpc.ClientConn, proto.ModalClientClient, error) {
+var client proto.ModalClientClient
+
+func init() {
+	_, client, _ = newClient(defaultProfile)
+}
+
+// newClient dials api.modal.com with auth/timeout/retry interceptors installed.
+// It returns (conn, stub). Close the conn when done.
+func newClient(profile Profile) (*grpc.ClientConn, proto.ModalClientClient, error) {
+	var target string
+	var creds credentials.TransportCredentials
+	if strings.HasPrefix(profile.ServerURL, "https://") {
+		target = strings.TrimPrefix(profile.ServerURL, "https://")
+		creds = credentials.NewTLS(&tls.Config{})
+	} else if strings.HasPrefix(profile.ServerURL, "http://") {
+		target = strings.TrimPrefix(profile.ServerURL, "http://")
+		creds = insecure.NewCredentials()
+	} else {
+		return nil, nil, status.Errorf(codes.InvalidArgument, "invalid server URL: %s", profile.ServerURL)
+	}
+
 	conn, err := grpc.NewClient(
-		apiEndpoint,
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})),
+		target,
+		grpc.WithTransportCredentials(creds),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(maxMessageSize),
 			grpc.MaxCallSendMsgSize(maxMessageSize),
@@ -121,7 +133,7 @@ func chainUnary(incs ...grpc.UnaryClientInterceptor) grpc.UnaryClientInterceptor
 	}
 }
 
-func authInterceptor(p Profile) grpc.UnaryClientInterceptor {
+func authInterceptor(profile Profile) grpc.UnaryClientInterceptor {
 	clientType := strconv.Itoa(int(proto.ClientType_CLIENT_TYPE_LIBMODAL))
 
 	return func(
@@ -136,8 +148,8 @@ func authInterceptor(p Profile) grpc.UnaryClientInterceptor {
 			ctx,
 			"x-modal-client-type", clientType,
 			"x-modal-client-version", "424242",
-			"x-modal-token-id", p.TokenID,
-			"x-modal-token-secret", p.TokenSecret,
+			"x-modal-token-id", profile.TokenID,
+			"x-modal-token-secret", profile.TokenSecret,
 		)
 		return inv(ctx, method, req, reply, cc, opts...)
 	}
@@ -154,7 +166,7 @@ func timeoutInterceptor() grpc.UnaryClientInterceptor {
 	) error {
 		// pick the first TimeoutCallOption, if any
 		for _, o := range opts {
-			if to, ok := o.(TimeoutCallOption); ok && to.timeout > 0 {
+			if to, ok := o.(timeoutCallOption); ok && to.timeout > 0 {
 				// honour an existing, *earlier* deadline if present
 				if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) <= to.timeout {
 					break
@@ -187,7 +199,7 @@ func retryInterceptor() grpc.UnaryClientInterceptor {
 
 		// override from call-options (first one wins)
 		for _, o := range opts {
-			if rc, ok := o.(RetryCallOption); ok {
+			if rc, ok := o.(retryCallOption); ok {
 				if rc.retries != nil {
 					retries = *rc.retries
 				}

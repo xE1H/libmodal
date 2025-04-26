@@ -102,7 +102,7 @@ func GetProfile(name string) (Profile, error) {
 	}
 
 	// 4. env-vars override file values
-	serverURL := firstNonEmpty(os.Getenv("MODAL_SERVER_URL"), raw.ServerURL, "https://api.modal.com:443")
+	serverURL := firstNonEmpty(os.Getenv("MODAL_SERVER_URL"), raw.ServerURL, "api.modal.com:443")
 	tokenID := firstNonEmpty(os.Getenv("MODAL_TOKEN_ID"), raw.TokenID)
 	tokenSecret := firstNonEmpty(os.Getenv("MODAL_TOKEN_SECRET"), raw.TokenSecret)
 	environment := firstNonEmpty(os.Getenv("MODAL_ENVIRONMENT"), raw.Environment)
