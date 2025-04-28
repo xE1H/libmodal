@@ -1,7 +1,7 @@
-import { App, Image } from "modal";
+import { App } from "modal";
 
 const app = await App.lookup("libmodal-example", { createIfMissing: true });
-const image = await Image.fromRegistry("node:22");
+const image = await app.imageFromRegistry("alpine:3.21");
 
 // Spawn a sandbox running the "cat" command.
 const sb = await app.createSandbox(image, { command: ["cat"] });

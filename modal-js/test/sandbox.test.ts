@@ -1,11 +1,11 @@
-import { App, Image } from "modal";
+import { App } from "modal";
 import { expect, test } from "vitest";
 
 test("CreateOneSandbox", async () => {
   const app = await App.lookup("libmodal-test", { createIfMissing: true });
   expect(app.appId).toBeTruthy();
 
-  const image = await Image.fromRegistry("TODO");
+  const image = await app.imageFromRegistry("alpine:3.21");
   expect(image.imageId).toBeTruthy();
 
   const sb = await app.createSandbox(image);
@@ -16,7 +16,7 @@ test("CreateOneSandbox", async () => {
 
 test("PassCatToStdin", async () => {
   const app = await App.lookup("libmodal-test", { createIfMissing: true });
-  const image = await Image.fromRegistry("busybox:latest");
+  const image = await app.imageFromRegistry("alpine:3.21");
 
   // Spawn a sandbox running the "cat" command.
   const sb = await app.createSandbox(image, { command: ["cat"] });

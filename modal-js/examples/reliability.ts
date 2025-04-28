@@ -1,10 +1,10 @@
 // Run a bunch of container exec commands, alerting of any output issues.
 
 import PQueue from "p-queue";
-import { App, Image } from "modal";
+import { App } from "modal";
 
 const app = await App.lookup("libmodal-example", { createIfMissing: true });
-const image = await Image.fromRegistry("python:3.13-slim");
+const image = await app.imageFromRegistry("python:3.13-slim");
 
 const sandboxes = [
   await app.createSandbox(image),
