@@ -13,3 +13,21 @@ test("can create a sandbox", async () => {
   await sb.terminate();
   expect(await sb.wait()).toBe(0);
 });
+
+test("sandbox stdin 'cat' command", async () => {
+  const app = await App.lookup("libmodal-test", { createIfMissing: true });
+  const image = await Image.fromRegistry("busybox:latest");
+
+  // Spawn a sandbox running the "cat" command.
+  const sb = await app.createSandbox(image, { command: ["cat"] });
+
+  // Write to the sandbox's stdin and read from its stdout.
+  await sb.stdin.writeText("this is input that should be mirrored by cat");
+  await sb.stdin.close();
+  expect(await sb.stdout.readText()).toBe(
+    "this is input that should be mirrored by cat",
+  );
+
+  // Terminate the sandbox.
+  await sb.terminate();
+});
