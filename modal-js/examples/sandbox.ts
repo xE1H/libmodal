@@ -11,3 +11,6 @@ console.log("sandbox:", sb.sandboxId);
 await sb.stdin.writeText("this is input that should be mirrored by cat");
 await sb.stdin.close();
 console.log("output:", await sb.stdout.readText());
+
+// Terminate the sandbox.
+await sb.terminate();
