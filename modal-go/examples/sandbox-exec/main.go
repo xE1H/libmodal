@@ -1,0 +1,114 @@
+/*
+import { App, Image } from "modal";
+
+const app = await App.lookup("libmodal-example", { createIfMissing: true });
+const image = await Image.fromRegistry("python:3.13-slim");
+
+const sb = await app.createSandbox(image);
+console.log("started sandbox:", sb.sandboxId);
+
+try {
+  const p = await sb.exec(
+    [
+      "python",
+      "-c",
+      `
+import time
+import sys
+for i in range(50000):
+    if i % 1000 == 0:
+        time.sleep(0.01)
+    print(i)
+    print(i, file=sys.stderr)`,
+    ],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+
+  // Read both the stdout and stderr streams.
+  const [contentStdout, contentStderr] = await Promise.all([
+    p.stdout.readText(),
+    p.stderr.readText(),
+  ]);
+  console.log(
+    `got ${contentStdout.length} bytes stdout and ${contentStderr.length} bytes stderr`,
+  );
+  console.log("returncode:", await p.wait());
+} finally {
+  await sb.terminate();
+}
+
+*/
+
+package main
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log"
+
+	"github.com/modal-labs/libmodal/modal-go"
+)
+
+func main() {
+	ctx := context.Background()
+
+	app, err := modal.AppLookup(ctx, "libmodal-example", modal.LookupOptions{CreateIfMissing: true})
+	if err != nil {
+		log.Fatalf("Failed to lookup or create app: %v", err)
+	}
+
+	image, err := modal.ImageFromRegistry("python:3.13-slim")
+	if err != nil {
+		log.Fatalf("Failed to create image from registry: %v", err)
+	}
+
+	sb, err := app.CreateSandbox(image, modal.SandboxOptions{})
+	if err != nil {
+		log.Fatalf("Failed to create sandbox: %v", err)
+	}
+	fmt.Println("Started sandbox:", sb.SandboxId)
+	defer sb.Terminate()
+
+	p, err := sb.Exec(
+		[]string{
+			"python",
+			"-c",
+			`
+import time
+import sys
+for i in range(50000):
+	if i % 1000 == 0:
+		time.sleep(0.01)
+	print(i)
+	print(i, file=sys.stderr)`,
+		},
+		modal.ExecOptions{
+			Stdout: modal.Pipe,
+			Stderr: modal.Pipe,
+		},
+	)
+	if err != nil {
+		log.Fatalf("Failed to execute command in sandbox: %v", err)
+	}
+
+	contentStdout, err := io.ReadAll(p.Stdout)
+	if err != nil {
+		log.Fatalf("Failed to read stdout: %v", err)
+	}
+	contentStderr, err := io.ReadAll(p.Stderr)
+	if err != nil {
+		log.Fatalf("Failed to read stderr: %v", err)
+	}
+
+	fmt.Printf("Got %d bytes stdout and %d bytes stderr\n", len(contentStdout), len(contentStderr))
+	returnCode, err := p.Wait()
+	if err != nil {
+		log.Fatalf("Failed to wait for process completion: %v", err)
+	}
+	fmt.Println("Return code:", returnCode)
+
+}

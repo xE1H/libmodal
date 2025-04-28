@@ -48,7 +48,7 @@ func newSandbox(ctx context.Context, sandboxId string) *Sandbox {
 }
 
 // Exec runs a command in the sandbox and returns text streams.
-func (sb *Sandbox) Exec(command []string, opts *ExecOptions) (*ContainerProcess, error) {
+func (sb *Sandbox) Exec(command []string, opts ExecOptions) (*ContainerProcess, error) {
 	if err := sb.ensureTaskId(); err != nil {
 		return nil, err
 	}
@@ -122,16 +122,14 @@ type ContainerProcess struct {
 	execId string
 }
 
-func newContainerProcess(ctx context.Context, execId string, opts *ExecOptions) *ContainerProcess {
+func newContainerProcess(ctx context.Context, execId string, opts ExecOptions) *ContainerProcess {
 	stdoutBehavior := Pipe
 	stderrBehavior := Pipe
-	if opts != nil {
-		if opts.Stdout != "" {
-			stdoutBehavior = opts.Stdout
-		}
-		if opts.Stderr != "" {
-			stderrBehavior = opts.Stderr
-		}
+	if opts.Stdout != "" {
+		stdoutBehavior = opts.Stdout
+	}
+	if opts.Stderr != "" {
+		stderrBehavior = opts.Stderr
 	}
 
 	cp := &ContainerProcess{execId: execId, ctx: ctx}
@@ -143,9 +141,9 @@ func newContainerProcess(ctx context.Context, execId string, opts *ExecOptions) 
 		cp.Stdout = io.NopCloser(bytes.NewReader(nil))
 	}
 	if stderrBehavior == Pipe {
-		cp.Stdout = outputStreamCp(ctx, execId, proto.FileDescriptor_FILE_DESCRIPTOR_STDERR)
+		cp.Stderr = outputStreamCp(ctx, execId, proto.FileDescriptor_FILE_DESCRIPTOR_STDERR)
 	} else {
-		cp.Stdout = io.NopCloser(bytes.NewReader(nil))
+		cp.Stderr = io.NopCloser(bytes.NewReader(nil))
 	}
 
 	return cp

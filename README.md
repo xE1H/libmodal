@@ -28,7 +28,8 @@ npm install modal
 
 Examples:
 
-- [Create sandboxes](./modal-js/examples/sandbox.ts)
+- [Create a sandbox](./modal-js/examples/sandbox.ts)
+- [Execute sandbox commands](./modal-js/examples/sandbox-exec.ts)
 
 ### Go (`modal-go/`)
 
@@ -46,7 +47,8 @@ import "github.com/modal-labs/libmodal/modal-go"
 
 Examples:
 
-- [Create sandboxes](./modal-go/examples/sandbox/main.go)
+- [Create a sandbox](./modal-go/examples/sandbox/main.go)
+- [Execute sandbox commands](./modal-go/examples/sandbox-exec/main.go)
 
 ### Python
 
@@ -55,16 +57,6 @@ If you're using Python, please use the [Modal Python Library](https://github.com
 ## Technical details
 
 `libmodal` is a cross-language client SDK for Modal. However, it does not have all the features of the [Modal Python Library](https://github.com/modal-labs/modal-client). We hope to add more features over time, although defining Modal Functions will still be exclusively in Python.
-
-Currently supported features:
-
-- Sandboxes
-  - Starting sandboxes
-  - Interacting with stdin/stdout
-  - Container images from registry
-  - Spawning processes
-- Calling deployed Modal Functions
-  - Spawning function calls
 
 ### Tests
 
