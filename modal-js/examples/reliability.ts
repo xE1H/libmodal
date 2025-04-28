@@ -3,7 +3,7 @@
 import PQueue from "p-queue";
 import { App, Image } from "modal";
 
-const app = await App.lookup("temp-libmodal", { createIfMissing: true });
+const app = await App.lookup("libmodal-example", { createIfMissing: true });
 const image = await Image.fromRegistry("python:3.13-slim");
 
 const sandboxes = [
