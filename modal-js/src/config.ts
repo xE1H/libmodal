@@ -49,12 +49,12 @@ export function getProfile(profileName?: string): Profile {
       }
     }
   }
-  if (!profileName || !Object.hasOwn(config, profileName)) {
+  if (profileName && !Object.hasOwn(config, profileName)) {
     throw new Error(
       `Profile "${profileName}" not found in .modal.toml. Please set the MODAL_PROFILE environment variable or specify a valid profile.`,
     );
   }
-  const profileData = config[profileName];
+  const profileData = profileName ? config[profileName] : {};
 
   let profile: Partial<Profile> = {
     serverUrl:

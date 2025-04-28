@@ -78,7 +78,7 @@ func GetProfile(name string) (Profile, error) {
 
 	// 3. verify existence
 	raw, ok := defaultConfig[name]
-	if !ok {
+	if name != "" && !ok {
 		return Profile{}, fmt.Errorf("profile %q not found in ~/.modal.toml", name)
 	}
 
