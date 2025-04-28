@@ -15,7 +15,7 @@ func TestCreateOneSandbox(t *testing.T) {
 	app, err := modal.AppLookup(context.Background(), "libmodal-test", modal.LookupOptions{CreateIfMissing: true})
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-	image, err := modal.ImageFromRegistry("busybox:latest")
+	image, err := app.ImageFromRegistry("alpine:3.21")
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 	sb, err := app.CreateSandbox(image, modal.SandboxOptions{})
@@ -32,7 +32,7 @@ func TestPassCatToStdin(t *testing.T) {
 	app, err := modal.AppLookup(context.Background(), "libmodal-test", modal.LookupOptions{CreateIfMissing: true})
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-	image, err := modal.ImageFromRegistry("busybox:latest")
+	image, err := app.ImageFromRegistry("alpine:3.21")
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 	// Spawn a sandbox running the "cat" command.

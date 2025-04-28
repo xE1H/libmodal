@@ -73,3 +73,8 @@ func (app *App) CreateSandbox(image *Image, options SandboxOptions) (*Sandbox, e
 
 	return newSandbox(app.ctx, createResp.GetSandboxId()), nil
 }
+
+// ImageFromRegistry creates an Image from a registry tag.
+func (app *App) ImageFromRegistry(tag string) (*Image, error) {
+	return fromRegistryInternal(app, tag)
+}

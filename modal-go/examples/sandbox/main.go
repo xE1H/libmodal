@@ -17,7 +17,7 @@ func main() {
 		log.Fatalf("Failed to lookup or create app: %v", err)
 	}
 
-	image, err := modal.ImageFromRegistry("busybox:latest")
+	image, err := app.ImageFromRegistry("alpine:3.21")
 	if err != nil {
 		log.Fatalf("Failed to create image from registry: %v", err)
 	}

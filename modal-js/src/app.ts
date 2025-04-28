@@ -4,7 +4,7 @@ import {
 } from "../proto/modal_proto/api";
 import { client } from "./client";
 import { environmentName } from "./config";
-import { fromRegistry, Image } from "./image";
+import { fromRegistryInternal, Image } from "./image";
 import { Sandbox } from "./sandbox";
 
 export type LookupOptions = {
@@ -64,6 +64,6 @@ export class App {
   }
 
   async imageFromRegistry(tag: string): Promise<Image> {
-    return await fromRegistry(this.appId, tag);
+    return await fromRegistryInternal(this.appId, tag);
   }
 }

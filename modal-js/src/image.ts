@@ -14,7 +14,10 @@ export class Image {
   }
 }
 
-export async function fromRegistry(appId: string, tag: string): Promise<Image> {
+export async function fromRegistryInternal(
+  appId: string,
+  tag: string,
+): Promise<Image> {
   const resp = await client.imageGetOrCreate({
     appId,
     image: {
