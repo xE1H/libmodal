@@ -66,10 +66,26 @@ var defaultRetryable = map[codes.Code]struct{}{
 	codes.Unknown:          {},
 }
 
+// defaultConfig caches the parsed ~/.modal.toml contents (may be empty).
+var defaultConfig config
+
+// defaultProfile is resolved at package init from MODAL_PROFILE, ~/.modal.toml, etc.
+var defaultProfile Profile
+
 var client proto.ModalClientClient
 
 func init() {
-	_, client, _ = newClient(defaultProfile)
+	var err error
+	defaultConfig, _ = readConfigFile()
+	defaultProfile, err = GetProfile("")
+	if err != nil {
+		panic(err) // fail fast – credentials are required to proceed
+	}
+
+	_, client, err = newClient(defaultProfile)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // newClient dials api.modal.com with auth/timeout/retry interceptors installed.
@@ -94,11 +110,10 @@ func newClient(profile Profile) (*grpc.ClientConn, proto.ModalClientClient, erro
 			grpc.MaxCallRecvMsgSize(maxMessageSize),
 			grpc.MaxCallSendMsgSize(maxMessageSize),
 		),
-		grpc.WithUnaryInterceptor(chainUnary(
-			authInterceptor(defaultProfile),
+		grpc.WithChainUnaryInterceptor(
 			retryInterceptor(),
 			timeoutInterceptor(),
-		)),
+		),
 	)
 	if err != nil {
 		return nil, nil, err
@@ -106,53 +121,16 @@ func newClient(profile Profile) (*grpc.ClientConn, proto.ModalClientClient, erro
 	return conn, proto.NewModalClientClient(conn), nil
 }
 
-func chainUnary(incs ...grpc.UnaryClientInterceptor) grpc.UnaryClientInterceptor {
-	return func(
-		ctx context.Context,
-		method string,
-		req, reply any,
-		cc *grpc.ClientConn,
-		inv grpc.UnaryInvoker,
-		opts ...grpc.CallOption,
-	) error {
-		h := inv
-		for i := len(incs) - 1; i >= 0; i-- {
-			next := h
-			inc := incs[i]
-			h = func(
-				c context.Context,
-				m string,
-				r, rep any,
-				conn *grpc.ClientConn,
-				op ...grpc.CallOption,
-			) error {
-				return inc(c, m, r, rep, conn, next, op...)
-			}
-		}
-		return h(ctx, method, req, reply, cc, opts...)
-	}
-}
-
-func authInterceptor(profile Profile) grpc.UnaryClientInterceptor {
+// clientContext returns a context with the default profile's auth headers.
+func clientContext(ctx context.Context) context.Context {
 	clientType := strconv.Itoa(int(proto.ClientType_CLIENT_TYPE_LIBMODAL))
-
-	return func(
-		ctx context.Context,
-		method string,
-		req, reply any,
-		cc *grpc.ClientConn,
-		inv grpc.UnaryInvoker,
-		opts ...grpc.CallOption,
-	) error {
-		ctx = metadata.AppendToOutgoingContext(
-			ctx,
-			"x-modal-client-type", clientType,
-			"x-modal-client-version", "0.74.25", // CLIENT VERSION
-			"x-modal-token-id", profile.TokenID,
-			"x-modal-token-secret", profile.TokenSecret,
-		)
-		return inv(ctx, method, req, reply, cc, opts...)
-	}
+	return metadata.AppendToOutgoingContext(
+		ctx,
+		"x-modal-client-type", clientType,
+		"x-modal-client-version", "0.74.25", // CLIENT VERSION
+		"x-modal-token-id", defaultProfile.TokenId,
+		"x-modal-token-secret", defaultProfile.TokenSecret,
+	)
 }
 
 func timeoutInterceptor() grpc.UnaryClientInterceptor {

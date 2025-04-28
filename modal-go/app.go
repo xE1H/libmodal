@@ -9,7 +9,8 @@ import (
 
 // App references a deployed Modal App.
 type App struct {
-	AppID string
+	AppId string
+	ctx   context.Context
 }
 
 // LookupOptions are options for finding deployed Modal objects.
@@ -18,9 +19,9 @@ type LookupOptions struct {
 	CreateIfMissing bool
 }
 
-// SandboxCreateOptions are options for creating a Modal Sandbox.
-type SandboxCreateOptions struct {
-	CPU     int           // CPU request in physical cores.
+// SandboxOptions are options for creating a Modal Sandbox.
+type SandboxOptions struct {
+	CPU     float64       // CPU request in physical cores.
 	Memory  int           // Memory request in MiB.
 	Timeout time.Duration // Maximum duration for the Sandbox.
 	Command []string      // Command to run in the Sandbox on startup.
@@ -28,6 +29,8 @@ type SandboxCreateOptions struct {
 
 // AppLookup looks up an existing App, or creates an empty one.
 func AppLookup(ctx context.Context, name string, options LookupOptions) (*App, error) {
+	ctx = clientContext(ctx)
+
 	creationType := proto.ObjectCreationType_OBJECT_CREATION_TYPE_UNSPECIFIED
 	if options.CreateIfMissing {
 		creationType = proto.ObjectCreationType_OBJECT_CREATION_TYPE_CREATE_IF_MISSING
@@ -43,5 +46,30 @@ func AppLookup(ctx context.Context, name string, options LookupOptions) (*App, e
 		return nil, err
 	}
 
-	return &App{AppID: resp.GetAppId()}, nil
+	return &App{AppId: resp.GetAppId(), ctx: ctx}, nil
+}
+
+// CreateSandbox creates a new Sandbox in the App with the specified image and options.
+func (app *App) CreateSandbox(image *Image, options SandboxOptions) (*Sandbox, error) {
+	createResp, err := client.SandboxCreate(app.ctx, proto.SandboxCreateRequest_builder{
+		AppId: app.AppId,
+		Definition: proto.Sandbox_builder{
+			EntrypointArgs: options.Command,
+			ImageId:        image.ImageId,
+			TimeoutSecs:    uint32(options.Timeout.Seconds()),
+			NetworkAccess: proto.NetworkAccess_builder{
+				NetworkAccessType: proto.NetworkAccess_OPEN,
+			}.Build(),
+			Resources: proto.Resources_builder{
+				MilliCpu: uint32(1000 * options.CPU),
+				MemoryMb: uint32(options.Memory),
+			}.Build(),
+		}.Build(),
+	}.Build())
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newSandbox(app.ctx, createResp.GetSandboxId()), nil
 }

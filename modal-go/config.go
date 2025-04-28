@@ -15,7 +15,7 @@ import (
 // Profile holds a fully-resolved configuration ready for use by the client.
 type Profile struct {
 	ServerURL   string // e.g. https://api.modal.com:443
-	TokenID     string
+	TokenId     string
 	TokenSecret string
 	Environment string // optional
 }
@@ -23,32 +23,13 @@ type Profile struct {
 // rawProfile mirrors the TOML structure on disk.
 type rawProfile struct {
 	ServerURL   string `toml:"server_url"`
-	TokenID     string `toml:"token_id"`
+	TokenId     string `toml:"token_id"`
 	TokenSecret string `toml:"token_secret"`
 	Environment string `toml:"environment"`
 	Active      bool   `toml:"active"`
 }
 
 type config map[string]rawProfile
-
-// defaultConfig caches the parsed ~/.modal.toml contents (may be empty).
-var defaultConfig config
-
-// defaultProfile is resolved at package init from MODAL_PROFILE, ~/.modal.toml, etc.
-var defaultProfile Profile
-
-// init performs one best-effort resolution so most callers can simply use
-// modal.defaultProfile without handling errors.  If resolution fails we panic,
-// mirroring the TypeScript throw-on-load behaviour; advanced programs can
-// ignore defaultProfile and call GetProfile themselves.
-func init() {
-	var err error
-	defaultConfig, _ = readConfigFile()
-	defaultProfile, err = GetProfile("")
-	if err != nil {
-		panic(err) // fail fast – credentials are required to proceed
-	}
-}
 
 // readConfigFile loads ~/.modal.toml, returning an empty config if the file
 // does not exist.
@@ -102,18 +83,18 @@ func GetProfile(name string) (Profile, error) {
 	}
 
 	// 4. env-vars override file values
-	serverURL := firstNonEmpty(os.Getenv("MODAL_SERVER_URL"), raw.ServerURL, "api.modal.com:443")
-	tokenID := firstNonEmpty(os.Getenv("MODAL_TOKEN_ID"), raw.TokenID)
+	serverURL := firstNonEmpty(os.Getenv("MODAL_SERVER_URL"), raw.ServerURL, "https://api.modal.com:443")
+	tokenId := firstNonEmpty(os.Getenv("MODAL_TOKEN_ID"), raw.TokenId)
 	tokenSecret := firstNonEmpty(os.Getenv("MODAL_TOKEN_SECRET"), raw.TokenSecret)
 	environment := firstNonEmpty(os.Getenv("MODAL_ENVIRONMENT"), raw.Environment)
 
-	if tokenID == "" || tokenSecret == "" {
+	if tokenId == "" || tokenSecret == "" {
 		return Profile{}, fmt.Errorf("profile %q missing token_id or token_secret (env-vars take precedence)", name)
 	}
 
 	return Profile{
 		ServerURL:   serverURL,
-		TokenID:     tokenID,
+		TokenId:     tokenId,
 		TokenSecret: tokenSecret,
 		Environment: environment,
 	}, nil
