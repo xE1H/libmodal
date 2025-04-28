@@ -1,18 +1,4 @@
 // Client construction, auth, timeout, and retry logic for Modal.
-//
-// Example:
-//
-//	ctx := context.Background()
-//	conn, cli, err := modal.NewClient()
-//	if err != nil { … }
-//	defer conn.Close()
-//
-//	resp, err := cli.AppCreate(
-//	    ctx,
-//	    &proto.AppCreateRequest{…},
-//	    modal.WithRetry(5),
-//	    modal.WithTimeout(10*time.Second),
-//	)
 package modal
 
 import (
