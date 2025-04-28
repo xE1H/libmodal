@@ -1,12 +1,10 @@
-# libmodal: Lightweight [Modal](https://modal.com) client
-
-Current state: **alpha. not yet published.**
+# libmodal: [Modal](https://modal.com) SDK Lite
 
 Modal client libraries for JavaScript and Go.
 
 This repository provides lightweight alternatives to the [Modal Python Library](https://github.com/modal-labs/modal-client). They let you start sandboxes (secure VMs), call Modal Functions, read or edit Volumes, and manage containers. However, they don't support deploying Modal Functions — those still need to be written in Python!
 
-These client libraries support different languages, but they all have the same features and API, so you can use Modal from any project.
+Each language in this repository has a library with similar features and API, so you can use Modal from any project.
 
 ## Setup
 
@@ -18,7 +16,7 @@ export MODAL_TOKEN_ID=ak-NOTAREALTOKENSTRINGXYZ
 export MODAL_TOKEN_SECRET=as-FAKESECRETSTRINGABCDEF
 ```
 
-Then you're ready to add the package to your project.
+Then you're ready to add the Modal SDK to your project.
 
 ## JavaScript (`modal-js/`)
 
@@ -49,6 +47,21 @@ import "github.com/modal-labs/libmodal/modal-go"
 Examples:
 
 - [Create sandboxes](./modal-go/examples/sandbox/main.go)
+
+## Python
+
+If you're using Python, please use the [Modal Python Library](https://github.com/modal-labs/modal-client), which is the main SDK and a separate project.
+
+## Development principles
+
+`libmodal` is a cross-language client library for Modal. To keep complexity manageable, we try to maintain identical behavior across languages. This means:
+
+- When adding a feature, add it to all languages simultaneously, with tests.
+- Code structure should be similar between folders.
+- The "client version" should also be bumped in each SDK.
+- Use a common set of gRPC primitives (retries, deadlines) and exceptions.
+- Complex types like streams should behave as analogously as possible.
+- Tests are run against production, and you need to be signed in to Modal to run them.
 
 ## License
 

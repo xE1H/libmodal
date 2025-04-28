@@ -147,7 +147,7 @@ func authInterceptor(profile Profile) grpc.UnaryClientInterceptor {
 		ctx = metadata.AppendToOutgoingContext(
 			ctx,
 			"x-modal-client-type", clientType,
-			"x-modal-client-version", "424242",
+			"x-modal-client-version", "0.74.25", // CLIENT VERSION
 			"x-modal-token-id", profile.TokenID,
 			"x-modal-token-secret", profile.TokenSecret,
 		)
