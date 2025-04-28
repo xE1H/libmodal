@@ -38,7 +38,7 @@ func AppLookup(ctx context.Context, name string, options LookupOptions) (*App, e
 
 	resp, err := client.AppGetOrCreate(ctx, proto.AppGetOrCreateRequest_builder{
 		AppName:            name,
-		EnvironmentName:    options.Environment,
+		EnvironmentName:    environmentName(options.Environment),
 		ObjectCreationType: creationType,
 	}.Build())
 

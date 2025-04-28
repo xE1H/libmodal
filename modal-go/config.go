@@ -108,3 +108,7 @@ func firstNonEmpty(values ...string) string {
 	}
 	return ""
 }
+
+func environmentName(environment string) string {
+	return firstNonEmpty(environment, defaultProfile.Environment)
+}

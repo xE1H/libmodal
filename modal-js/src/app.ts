@@ -3,6 +3,7 @@ import {
   ObjectCreationType,
 } from "../proto/modal_proto/api";
 import { client } from "./client";
+import { environmentName } from "./config";
 import { Image } from "./image";
 import { Sandbox } from "./sandbox";
 
@@ -29,7 +30,7 @@ export class App {
   static async lookup(name: string, options: LookupOptions = {}): Promise<App> {
     const resp = await client.appGetOrCreate({
       appName: name,
-      environmentName: options.environment,
+      environmentName: environmentName(options.environment),
       objectCreationType: options.createIfMissing
         ? ObjectCreationType.OBJECT_CREATION_TYPE_CREATE_IF_MISSING
         : ObjectCreationType.OBJECT_CREATION_TYPE_UNSPECIFIED,

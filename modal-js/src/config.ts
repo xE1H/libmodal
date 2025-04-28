@@ -74,3 +74,7 @@ export function getProfile(profileName?: string): Profile {
 }
 
 export const profile = getProfile(process.env["MODAL_PROFILE"] || undefined);
+
+export function environmentName(environment?: string): string {
+  return environment || profile.environment || "";
+}
