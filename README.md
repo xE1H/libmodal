@@ -18,7 +18,7 @@ export MODAL_TOKEN_SECRET=as-FAKESECRETSTRINGABCDEF
 
 Then you're ready to add the Modal SDK to your project.
 
-## JavaScript (`modal-js/`)
+### JavaScript (`modal-js/`)
 
 Install this in any server-side Node.js / Deno / Bun project.
 
@@ -30,7 +30,7 @@ Examples:
 
 - [Create sandboxes](./modal-js/examples/sandbox.ts)
 
-## Go (`modal-go/`)
+### Go (`modal-go/`)
 
 First, use `go get` to install the latest version of the library.
 
@@ -48,20 +48,36 @@ Examples:
 
 - [Create sandboxes](./modal-go/examples/sandbox/main.go)
 
-## Python
+### Python
 
 If you're using Python, please use the [Modal Python Library](https://github.com/modal-labs/modal-client), which is the main SDK and a separate project.
 
-## Development principles
+## Technical details
 
-`libmodal` is a cross-language client library for Modal. To keep complexity manageable, we try to maintain identical behavior across languages. This means:
+`libmodal` is a cross-language client SDK for Modal. However, it does not have all the features of the [Modal Python Library](https://github.com/modal-labs/modal-client). We hope to add more features over time, although defining Modal Functions will still be exclusively in Python.
+
+Currently supported features:
+
+- Sandboxes
+  - Starting sandboxes
+  - Interacting with stdin/stdout
+  - Container images from registry
+  - Spawning processes
+- Calling deployed Modal Functions
+  - Spawning function calls
+
+### Tests
+
+Tests are run against production, and you need to be authenticated with Modal to run them. See the [`test-support/`](./test-support) folder for details.
+
+### Development principles
+
+To keep complexity manageable, we try to maintain identical behavior across languages. This means:
 
 - When adding a feature, add it to all languages simultaneously, with tests.
 - Code structure should be similar between folders.
-- The "client version" should also be bumped in each SDK.
 - Use a common set of gRPC primitives (retries, deadlines) and exceptions.
-- Complex types like streams should behave as analogously as possible.
-- Tests are run against production, and you need to be signed in to Modal to run them.
+- Complex types like streams must behave as close as possible.
 
 ## License
 
