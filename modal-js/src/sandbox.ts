@@ -1,5 +1,5 @@
 import { FileDescriptor } from "../proto/modal_proto/api";
-import { client } from "./client";
+import { client, isRetryableGrpc } from "./client";
 import {
   ModalReadStream,
   ModalWriteStream,
@@ -177,7 +177,7 @@ async function* outputStreamSb(
 ): AsyncIterable<Uint8Array> {
   let lastIndex = "0-0";
   let completed = false;
-  let retriesRemaining = 10;
+  let retries = 10;
   while (!completed) {
     try {
       const outputIterator = client.sandboxGetLogs({
@@ -194,13 +194,9 @@ async function* outputStreamSb(
           break;
         }
       }
-    } catch (error: any) {
-      // TODO: Distinguish retryable gRPC status codes, StreamTerminated, etc.
-      if (retriesRemaining > 0) {
-        retriesRemaining--;
-      } else {
-        throw error;
-      }
+    } catch (error) {
+      if (isRetryableGrpc(error) && retries > 0) retries--;
+      else throw error;
     }
   }
 }
@@ -212,7 +208,7 @@ async function* outputStreamCp(
 ): AsyncIterable<Uint8Array> {
   let lastIndex = 0;
   let completed = false;
-  let retriesRemaining = 10;
+  let retries = 10;
   while (!completed) {
     try {
       const outputIterator = client.containerExecGetOutput({
@@ -232,13 +228,9 @@ async function* outputStreamCp(
           break;
         }
       }
-    } catch (error: any) {
-      // TODO: Distinguish retryable gRPC status codes, StreamTerminated, etc.
-      if (retriesRemaining > 0) {
-        retriesRemaining--;
-      } else {
-        throw error;
-      }
+    } catch (error) {
+      if (isRetryableGrpc(error) && retries > 0) retries--;
+      else throw error;
     }
   }
 }

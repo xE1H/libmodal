@@ -257,7 +257,7 @@ func outputStreamSb(ctx context.Context, sandboxId string, fd proto.FileDescript
 				LastEntryId:    lastIndex,
 			}.Build())
 			if err != nil {
-				if retries > 0 && ctx.Err() == nil {
+				if isRetryableGrpc(err) && retries > 0 {
 					retries--
 					continue
 				}
@@ -268,14 +268,14 @@ func outputStreamSb(ctx context.Context, sandboxId string, fd proto.FileDescript
 				batch, err := stream.Recv()
 				if err != nil {
 					if err != io.EOF {
-						if retries > 0 {
+						if isRetryableGrpc(err) && retries > 0 {
 							retries--
 						} else {
 							pw.CloseWithError(fmt.Errorf("error getting output stream: %w", err))
 							return
 						}
 					}
-					break // stream ends, may be io.EOF / timeout
+					break // we need to retry, either from an EOF or gRPC error
 				}
 				lastIndex = batch.GetEntryId()
 				for _, item := range batch.GetItems() {
@@ -308,7 +308,7 @@ func outputStreamCp(ctx context.Context, execId string, fd proto.FileDescriptor)
 				LastBatchIndex: lastIndex,
 			}.Build())
 			if err != nil {
-				if retries > 0 && ctx.Err() == nil {
+				if isRetryableGrpc(err) && retries > 0 {
 					retries--
 					continue
 				}
@@ -319,14 +319,14 @@ func outputStreamCp(ctx context.Context, execId string, fd proto.FileDescriptor)
 				batch, err := stream.Recv()
 				if err != nil {
 					if err != io.EOF {
-						if retries > 0 {
+						if isRetryableGrpc(err) && retries > 0 {
 							retries--
 						} else {
 							pw.CloseWithError(fmt.Errorf("error getting output stream: %w", err))
 							return
 						}
 					}
-					break // stream ends, may be io.EOF / timeout
+					break // we need to retry, either from an EOF or gRPC error
 				}
 				lastIndex = batch.GetBatchIndex()
 				for _, item := range batch.GetItems() {
