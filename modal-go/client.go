@@ -1,5 +1,6 @@
-// Client construction, auth, timeout, and retry logic for Modal.
 package modal
+
+// Client construction, auth, timeout, and retry logic for Modal.
 
 import (
 	"context"

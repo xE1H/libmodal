@@ -1,6 +1,8 @@
 module github.com/modal-labs/libmodal/modal-go
 
-go 1.23.3
+go 1.23.0
+
+toolchain go1.23.3
 
 require (
 	github.com/djherbis/buffer v1.2.0
