@@ -1,6 +1,6 @@
 # Modal JavaScript Library
 
-[![Version](https://img.shields.io/npm/v/stripe.svg)](https://www.npmjs.org/package/stripe)
+[![Version](https://img.shields.io/npm/v/modal.svg)](https://www.npmjs.org/package/modal)
 [![Build Status](https://github.com/modal-labs/libmodal/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/modal-labs/libmodal/actions?query=branch%3Amain)
 [![Downloads](https://img.shields.io/npm/dm/modal.svg)](https://www.npmjs.com/package/modal)
 
