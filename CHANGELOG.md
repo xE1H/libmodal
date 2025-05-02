@@ -2,7 +2,7 @@
 
 Both client libraries are pre-1.0, and they have separate versioning.
 
-## Unreleased
+## modal-js/v0.3.3, modal-go/v0.0.4
 
 - Support calling remote functions with arguments greater than 2 MiB in byte payload size.
 
