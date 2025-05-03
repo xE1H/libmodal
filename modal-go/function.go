@@ -15,6 +15,8 @@ import (
 
 	pickle "github.com/kisielk/og-rek"
 	pb "github.com/modal-labs/libmodal/modal-go/proto/modal_proto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -43,6 +45,9 @@ func FunctionLookup(ctx context.Context, appName string, name string, options Lo
 		EnvironmentName: environmentName(options.Environment),
 	}.Build())
 
+	if status, ok := status.FromError(err); ok && status.Code() == codes.NotFound {
+		return nil, NotFoundError{fmt.Sprintf("function '%s/%s' not found", appName, name)}
+	}
 	if err != nil {
 		return nil, err
 	}

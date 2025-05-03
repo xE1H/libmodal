@@ -22,10 +22,10 @@ func TestClsCall(t *testing.T) {
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 	// Try accessing a non-existent method
-	function, err := instance.Method("nonexistent")
+	_, err = instance.Method("nonexistent")
 	g.Expect(err).Should(gomega.HaveOccurred())
 
-	function, err = instance.Method("echo_string")
+	function, err := instance.Method("echo_string")
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 	result, err := function.Remote(nil, map[string]any{"s": "hello"})
@@ -44,6 +44,17 @@ func TestClsCall(t *testing.T) {
 	function, err = instance.Method("echo_parameter")
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-	result, err = function.Remote(nil, nil)
+	result, _ = function.Remote(nil, nil)
 	g.Expect(result).Should(gomega.Equal("output: hello-init"))
+}
+
+func TestClsNotFound(t *testing.T) {
+	t.Parallel()
+	g := gomega.NewWithT(t)
+
+	_, err := modal.ClsLookup(
+		context.Background(),
+		"libmodal-test-support", "NotRealClassName", modal.LookupOptions{},
+	)
+	g.Expect(err).Should(gomega.BeAssignableToTypeOf(modal.NotFoundError{}))
 }

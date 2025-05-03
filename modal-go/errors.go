@@ -28,3 +28,12 @@ type InternalFailure struct {
 func (e InternalFailure) Error() string {
 	return "InternalFailure: " + e.Exception
 }
+
+// NotFoundError is returned when a resource is not found.
+type NotFoundError struct {
+	Exception string
+}
+
+func (e NotFoundError) Error() string {
+	return "NotFoundError: " + e.Exception
+}

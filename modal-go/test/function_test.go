@@ -45,3 +45,14 @@ func TestFunctionCallLargeInput(t *testing.T) {
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 	g.Expect(result).Should(gomega.Equal(int64(len)))
 }
+
+func TestFunctionNotFound(t *testing.T) {
+	t.Parallel()
+	g := gomega.NewWithT(t)
+
+	_, err := modal.FunctionLookup(
+		context.Background(),
+		"libmodal-test-support", "not_a_real_function", modal.LookupOptions{},
+	)
+	g.Expect(err).Should(gomega.BeAssignableToTypeOf(modal.NotFoundError{}))
+}

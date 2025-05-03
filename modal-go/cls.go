@@ -8,6 +8,8 @@ import (
 	"sort"
 
 	pb "github.com/modal-labs/libmodal/modal-go/proto/modal_proto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -38,6 +40,9 @@ func ClsLookup(ctx context.Context, appName string, name string, options LookupO
 		EnvironmentName: environmentName(options.Environment),
 	}.Build())
 
+	if status, ok := status.FromError(err); ok && status.Code() == codes.NotFound {
+		return nil, NotFoundError{fmt.Sprintf("class '%s/%s' not found", appName, name)}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to look up class service function: %w", err)
 	}
@@ -134,15 +139,10 @@ func (c *Cls) bindParameters(params map[string]any) (string, error) {
 
 // Method returns the Function with the given name from a ClsInstance.
 func (c *ClsInstance) Method(name string) (*Function, error) {
-	if c.methods == nil {
-		return nil, fmt.Errorf("class instance has no methods")
-	}
-
 	method, ok := c.methods[name]
 	if !ok {
-		return nil, fmt.Errorf("method '%s' not found", name)
+		return nil, NotFoundError{fmt.Sprintf("method '%s' not found on class", name)}
 	}
-
 	return method, nil
 }
 

@@ -2,9 +2,12 @@ package modal
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	pb "github.com/modal-labs/libmodal/modal-go/proto/modal_proto"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // App references a deployed Modal App.
@@ -42,6 +45,9 @@ func AppLookup(ctx context.Context, name string, options LookupOptions) (*App, e
 		ObjectCreationType: creationType,
 	}.Build())
 
+	if status, ok := status.FromError(err); ok && status.Code() == codes.NotFound {
+		return nil, NotFoundError{fmt.Sprintf("app '%s' not found", name)}
+	}
 	if err != nil {
 		return nil, err
 	}
