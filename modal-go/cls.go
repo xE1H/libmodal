@@ -20,116 +20,6 @@ type Cls struct {
 	methodNames       []string
 }
 
-// ClsInstance represents an instantiated Modal class with bound parameters.
-// It provides access to the class methods with the bound parameters.
-type ClsInstance struct {
-	ctx     context.Context
-	methods map[string]*Function
-}
-
-// Instance creates a new instance of the class with the provided parameters.
-func (c *Cls) Instance(kwargs map[string]any) (*ClsInstance, error) {
-	instance := &ClsInstance{
-		ctx:     c.ctx,
-		methods: make(map[string]*Function),
-	}
-	// Class isn't parametrized, return a simple instance
-	if len(c.schema) == 0 {
-		for _, name := range c.methodNames {
-			function := &Function{
-				FunctionId: c.serviceFunctionId,
-				MethodName: &name,
-				ctx:        c.ctx,
-			}
-			instance.methods[name] = function
-		}
-		return instance, nil
-	}
-
-	// Class has parameters, bind the parameters to service function
-	// and update method references
-	boundFunctionId, err := c.bindParameters(kwargs)
-	if err != nil {
-		return nil, err
-	}
-
-	// Update all methods to use the bound function ID
-	for _, name := range c.methodNames {
-		boundMethod := &Function{
-			FunctionId: boundFunctionId,
-			MethodName: &name,
-			ctx:        c.ctx,
-		}
-		instance.methods[name] = boundMethod
-	}
-	return instance, nil
-}
-
-// bindParameters processes the parameters and binds them to the class function.
-func (c *Cls) bindParameters(kwargs map[string]any) (string, error) {
-	// Create a parameter set
-	paramSet := pb.ClassParameterSet_builder{
-		Parameters: []*pb.ClassParameterValue{},
-	}.Build()
-
-	// Process each parameter according to the schema
-	for _, paramSpec := range c.schema {
-		name := paramSpec.GetName()
-		value, provided := kwargs[name]
-
-		// Check if required or use default
-		if !provided {
-			if paramSpec.GetHasDefault() {
-				value = paramSpec.GetHasDefault()
-			} else {
-				return "", fmt.Errorf("required parameter '%s' not provided", name)
-			}
-		}
-
-		// Encode the parameter value
-		paramValue, err := encodeParameterValue(name, value, paramSpec.GetType())
-		if err != nil {
-			return "", err
-		}
-
-		// Add to the parameter set
-		newParameters := append(paramSet.GetParameters(), paramValue)
-		paramSet.SetParameters(newParameters)
-	}
-
-	// Serialize and bind parameters
-	sortParameterSet(paramSet)
-	serializedParams, err := proto.Marshal(paramSet)
-	if err != nil {
-		return "", fmt.Errorf("failed to serialize parameters: %w", err)
-	}
-
-	// Bind parameters to create a parameterized function
-	bindResp, err := client.FunctionBindParams(c.ctx, pb.FunctionBindParamsRequest_builder{
-		FunctionId:       c.serviceFunctionId,
-		SerializedParams: serializedParams,
-	}.Build())
-	if err != nil {
-		return "", fmt.Errorf("failed to bind parameters: %w", err)
-	}
-
-	return bindResp.GetBoundFunctionId(), nil
-}
-
-// Method returns the Function with the given name from a ClsInstance.
-func (c *ClsInstance) Method(name string) (*Function, error) {
-	if c.methods == nil {
-		return nil, fmt.Errorf("class instance has no methods")
-	}
-
-	method, ok := c.methods[name]
-	if !ok {
-		return nil, fmt.Errorf("method '%s' not found", name)
-	}
-
-	return method, nil
-}
-
 // ClsLookup looks up an existing Cls constructing Function objects for each class method.
 func ClsLookup(ctx context.Context, appName string, name string, options LookupOptions) (*Cls, error) {
 	ctx = clientContext(ctx)
@@ -180,26 +70,106 @@ func ClsLookup(ctx context.Context, appName string, name string, options LookupO
 	return &cls, nil
 }
 
-// Sort ClassParameterSet parameters based on parameter value
-func sortParameterSet(paramSet *pb.ClassParameterSet) {
-	values := paramSet.GetParameters()
-	sort.Slice(values, func(i, j int) bool {
-		return values[i] != nil && (values[j] == nil || values[i].GetName() < values[j].GetName())
-	})
-	paramSet.SetParameters(values)
+// ClsInstance represents an instantiated Modal class with bound parameters.
+// It provides access to the class methods with the bound parameters.
+type ClsInstance struct {
+	ctx     context.Context
+	methods map[string]*Function
 }
 
-// Helper function to copy methods map
-func copyMethods(methods map[string]*Function) map[string]*Function {
-	result := make(map[string]*Function)
-	for name, method := range methods {
-		result[name] = method
+// Instance creates a new instance of the class with the provided parameters.
+func (c *Cls) Instance(params map[string]any) (*ClsInstance, error) {
+	instance := &ClsInstance{
+		ctx:     c.ctx,
+		methods: make(map[string]*Function),
 	}
-	return result
+
+	// Class isn't parametrized, return a simple instance.
+	if len(c.schema) == 0 {
+		for _, name := range c.methodNames {
+			instance.methods[name] = &Function{
+				FunctionId: c.serviceFunctionId,
+				MethodName: &name,
+				ctx:        c.ctx,
+			}
+		}
+		return instance, nil
+	}
+
+	// Class has parameters, bind the parameters to service function
+	// and update method references.
+	boundFunctionId, err := c.bindParameters(params)
+	if err != nil {
+		return nil, err
+	}
+	// Update all methods to use the bound function ID.
+	for _, name := range c.methodNames {
+		instance.methods[name] = &Function{
+			FunctionId: boundFunctionId,
+			MethodName: &name,
+			ctx:        c.ctx,
+		}
+	}
+	return instance, nil
 }
 
-// encodeParameterValue converts a Go value to a ParameterValue proto message
-func encodeParameterValue(name string, value any, paramType pb.ParameterType) (*pb.ClassParameterValue, error) {
+// bindParameters processes the parameters and binds them to the class function.
+func (c *Cls) bindParameters(params map[string]any) (string, error) {
+	serializedParams, err := encodeParameterSet(c.schema, params)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize parameters: %w", err)
+	}
+
+	// Bind parameters to create a parameterized function
+	bindResp, err := client.FunctionBindParams(c.ctx, pb.FunctionBindParamsRequest_builder{
+		FunctionId:       c.serviceFunctionId,
+		SerializedParams: serializedParams,
+	}.Build())
+	if err != nil {
+		return "", fmt.Errorf("failed to bind parameters: %w", err)
+	}
+
+	return bindResp.GetBoundFunctionId(), nil
+}
+
+// Method returns the Function with the given name from a ClsInstance.
+func (c *ClsInstance) Method(name string) (*Function, error) {
+	if c.methods == nil {
+		return nil, fmt.Errorf("class instance has no methods")
+	}
+
+	method, ok := c.methods[name]
+	if !ok {
+		return nil, fmt.Errorf("method '%s' not found", name)
+	}
+
+	return method, nil
+}
+
+// encodeParameterSet encodes the parameter values into a binary format.
+func encodeParameterSet(schema []*pb.ClassParameterSpec, params map[string]any) ([]byte, error) {
+	var encoded []*pb.ClassParameterValue
+
+	for _, paramSpec := range schema {
+		name := paramSpec.GetName()
+		paramValue, err := encodeParameter(paramSpec, params[name])
+		if err != nil {
+			return nil, err
+		}
+		encoded = append(encoded, paramValue)
+	}
+
+	// Sort keys, identical to Python `SerializeToString(deterministic=True)`.
+	sort.Slice(encoded, func(i, j int) bool {
+		return encoded[i].GetName() < encoded[j].GetName()
+	})
+	return proto.Marshal(pb.ClassParameterSet_builder{Parameters: encoded}.Build())
+}
+
+// encodeParameter converts a Go value to a ParameterValue proto message
+func encodeParameter(paramSpec *pb.ClassParameterSpec, value any) (*pb.ClassParameterValue, error) {
+	name := paramSpec.GetName()
+	paramType := paramSpec.GetType()
 	paramValue := pb.ClassParameterValue_builder{
 		Name: name,
 		Type: paramType,
@@ -207,6 +177,9 @@ func encodeParameterValue(name string, value any, paramType pb.ParameterType) (*
 
 	switch paramType {
 	case pb.ParameterType_PARAM_TYPE_STRING:
+		if value == nil && paramSpec.GetHasDefault() {
+			value = paramSpec.GetStringDefault()
+		}
 		strValue, ok := value.(string)
 		if !ok {
 			return nil, fmt.Errorf("parameter '%s' must be a string", name)
@@ -214,6 +187,9 @@ func encodeParameterValue(name string, value any, paramType pb.ParameterType) (*
 		paramValue.SetStringValue(strValue)
 
 	case pb.ParameterType_PARAM_TYPE_INT:
+		if value == nil && paramSpec.GetHasDefault() {
+			value = paramSpec.GetIntDefault()
+		}
 		var intValue int64
 		switch v := value.(type) {
 		case int:
@@ -228,6 +204,9 @@ func encodeParameterValue(name string, value any, paramType pb.ParameterType) (*
 		paramValue.SetIntValue(intValue)
 
 	case pb.ParameterType_PARAM_TYPE_BOOL:
+		if value == nil && paramSpec.GetHasDefault() {
+			value = paramSpec.GetBoolDefault()
+		}
 		boolValue, ok := value.(bool)
 		if !ok {
 			return nil, fmt.Errorf("parameter '%s' must be a boolean", name)
@@ -235,6 +214,9 @@ func encodeParameterValue(name string, value any, paramType pb.ParameterType) (*
 		paramValue.SetBoolValue(boolValue)
 
 	case pb.ParameterType_PARAM_TYPE_BYTES:
+		if value == nil && paramSpec.GetHasDefault() {
+			value = paramSpec.GetBytesDefault()
+		}
 		bytesValue, ok := value.([]byte)
 		if !ok {
 			return nil, fmt.Errorf("parameter '%s' must be a byte slice", name)
