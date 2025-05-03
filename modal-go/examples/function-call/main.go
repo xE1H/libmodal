@@ -18,13 +18,13 @@ func main() {
 		log.Fatalf("Failed to lookup function: %v", err)
 	}
 
-	ret, err := echo.Remote(ctx, []any{"Hello world!"}, nil)
+	ret, err := echo.Remote([]any{"Hello world!"}, nil)
 	if err != nil {
 		log.Fatalf("Failed to call function: %v", err)
 	}
 	fmt.Printf("%s\n", ret)
 
-	ret, err = echo.Remote(ctx, nil, map[string]any{"s": "Hello world!"})
+	ret, err = echo.Remote(nil, map[string]any{"s": "Hello world!"})
 	if err != nil {
 		log.Fatalf("Failed to call function with kwargs: %v", err)
 	}
