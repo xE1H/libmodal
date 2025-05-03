@@ -28,11 +28,11 @@ async function readConfigFile(): Promise<Config> {
       encoding: "utf-8",
     });
     return parseToml(configContent) as Config;
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
       return {} as Config;
     }
-    throw new Error(`Failed to read or parse .modal.toml: ${error.message}`);
+    throw new Error(`Failed to read or parse .modal.toml: ${err.message}`);
   }
 }
 

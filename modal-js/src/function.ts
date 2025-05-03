@@ -14,8 +14,14 @@ import {
 import { LookupOptions } from "./app";
 import { client } from "./client";
 import { environmentName } from "./config";
-import { InternalFailure, RemoteError, TimeoutError } from "./errors";
+import {
+  InternalFailure,
+  NotFoundError,
+  RemoteError,
+  TimeoutError,
+} from "./errors";
 import { dumps, loads } from "./pickle";
+import { ClientError, Status } from "nice-grpc";
 
 // From: modal/_utils/blob_utils.py
 const maxObjectSizeBytes = 2 * 1024 * 1024; // 2 MiB
@@ -37,13 +43,19 @@ export class Function_ {
     name: string,
     options: LookupOptions = {},
   ): Promise<Function_> {
-    const resp = await client.functionGet({
-      appName,
-      objectTag: name,
-      namespace: DeploymentNamespace.DEPLOYMENT_NAMESPACE_WORKSPACE,
-      environmentName: environmentName(options.environment),
-    });
-    return new Function_(resp.functionId);
+    try {
+      const resp = await client.functionGet({
+        appName,
+        objectTag: name,
+        namespace: DeploymentNamespace.DEPLOYMENT_NAMESPACE_WORKSPACE,
+        environmentName: environmentName(options.environment),
+      });
+      return new Function_(resp.functionId);
+    } catch (err) {
+      if (err instanceof ClientError && err.code === Status.NOT_FOUND)
+        throw new NotFoundError(`Function '${appName}/${name}' not found`);
+      throw err;
+    }
   }
 
   // Execute a single input into a remote Function.

@@ -21,3 +21,11 @@ export class InternalFailure extends Error {
     this.name = "InternalFailure";
   }
 }
+
+/** Some resource was not found. */
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}

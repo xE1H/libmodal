@@ -1,4 +1,4 @@
-import { Function_ } from "modal";
+import { Function_, NotFoundError } from "modal";
 import { expect, test } from "vitest";
 
 test("FunctionCall", async () => {
@@ -25,4 +25,12 @@ test("FunctionCallLargeInput", async () => {
   const input = new Uint8Array(len);
   const result = await function_.remote([input]);
   expect(result).toBe(len);
+});
+
+test("FunctionNotFound", async () => {
+  const promise = Function_.lookup(
+    "libmodal-test-support",
+    "not_a_real_function",
+  );
+  await expect(promise).rejects.toThrowError(NotFoundError);
 });

@@ -82,9 +82,9 @@ const retryableGrpcStatusCodes = new Set([
   Status.UNKNOWN,
 ]);
 
-export function isRetryableGrpc(error: unknown) {
-  if (error instanceof ClientError) {
-    return retryableGrpcStatusCodes.has(error.code);
+export function isRetryableGrpc(err: unknown) {
+  if (err instanceof ClientError) {
+    return retryableGrpcStatusCodes.has(err.code);
   }
   return false;
 }

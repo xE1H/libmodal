@@ -194,9 +194,9 @@ async function* outputStreamSb(
           break;
         }
       }
-    } catch (error) {
-      if (isRetryableGrpc(error) && retries > 0) retries--;
-      else throw error;
+    } catch (err) {
+      if (isRetryableGrpc(err) && retries > 0) retries--;
+      else throw err;
     }
   }
 }
@@ -228,9 +228,9 @@ async function* outputStreamCp(
           break;
         }
       }
-    } catch (error) {
-      if (isRetryableGrpc(error) && retries > 0) retries--;
-      else throw error;
+    } catch (err) {
+      if (isRetryableGrpc(err) && retries > 0) retries--;
+      else throw err;
     }
   }
 }
