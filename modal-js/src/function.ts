@@ -18,7 +18,7 @@ import {
   InternalFailure,
   NotFoundError,
   RemoteError,
-  TimeoutError,
+  FunctionTimeoutError,
 } from "./errors";
 import { dumps, loads } from "./pickle";
 import { ClientError, Status } from "nice-grpc";
@@ -126,7 +126,7 @@ async function processResult(
 
   switch (result.status) {
     case GenericResult_GenericStatus.GENERIC_STATUS_TIMEOUT:
-      throw new TimeoutError(`Timeout: ${result.exception}`);
+      throw new FunctionTimeoutError(`Timeout: ${result.exception}`);
     case GenericResult_GenericStatus.GENERIC_STATUS_INTERNAL_FAILURE:
       throw new InternalFailure(`Internal failure: ${result.exception}`);
     case GenericResult_GenericStatus.GENERIC_STATUS_SUCCESS:
