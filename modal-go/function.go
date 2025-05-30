@@ -21,9 +21,12 @@ import (
 )
 
 // From: modal/_utils/blob_utils.py
-const maxObjectSizeBytes = 2 * 1024 * 1024 // 2 MiB
+const maxObjectSizeBytes int = 2 * 1024 * 1024 // 2 MiB
 
-func timeNow() float64 {
+// From: modal-client/modal/_utils/function_utils.py
+const OutputsTimeout time.Duration = time.Second * 55
+
+func timeNowSeconds() float64 {
 	return float64(time.Now().UnixNano()) / 1e9
 }
 
@@ -81,8 +84,8 @@ func pickleDeserialize(buffer []byte) (any, error) {
 	return result, nil
 }
 
-// Execute a single input into a remote Function.
-func (f *Function) Remote(args []any, kwargs map[string]any) (any, error) {
+// Serializes inputs, make a function call and return its ID
+func (f *Function) execFunctionCall(args []any, kwargs map[string]any, invocationType pb.FunctionCallInvocationType) (*string, error) {
 	payload, err := pickleSerialize(args, kwargs)
 	if err != nil {
 		return nil, err
@@ -115,33 +118,83 @@ func (f *Function) Remote(args []any, kwargs map[string]any) (any, error) {
 	functionMapResponse, err := client.FunctionMap(f.ctx, pb.FunctionMapRequest_builder{
 		FunctionId:                 f.FunctionId,
 		FunctionCallType:           pb.FunctionCallType_FUNCTION_CALL_TYPE_UNARY,
-		FunctionCallInvocationType: pb.FunctionCallInvocationType_FUNCTION_CALL_INVOCATION_TYPE_SYNC,
+		FunctionCallInvocationType: invocationType,
 		PipelinedInputs:            functionInputs,
 	}.Build())
 	if err != nil {
-		return nil, fmt.Errorf("FunctionMap error: %v", err)
+		return nil, fmt.Errorf("FunctionMap error: %w", err)
 	}
 
+	functionCallId := functionMapResponse.GetFunctionCallId()
+	return &functionCallId, nil
+}
+
+// Remote executes a single input on a remote Function.
+func (f *Function) Remote(args []any, kwargs map[string]any) (any, error) {
+	invocationType := pb.FunctionCallInvocationType_FUNCTION_CALL_INVOCATION_TYPE_SYNC
+	functionCallId, err := f.execFunctionCall(args, kwargs, invocationType)
+	if err != nil {
+		return nil, err
+	}
+
+	return pollFunctionOutput(f.ctx, *functionCallId, OutputsTimeout)
+}
+
+// Poll for ouputs for a given FunctionCall ID
+func pollFunctionOutput(ctx context.Context, functionCallId string, timeout time.Duration) (any, error) {
+	startTime := time.Now()
+
+	// Calculate initial backend timeout
+	pollTimeout := minTimeout(OutputsTimeout, timeout)
 	for {
-		response, err := client.FunctionGetOutputs(f.ctx, pb.FunctionGetOutputsRequest_builder{
-			FunctionCallId: functionMapResponse.GetFunctionCallId(),
+		// Context might have been cancelled. Check before next poll operation.
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
+		response, err := client.FunctionGetOutputs(ctx, pb.FunctionGetOutputsRequest_builder{
+			FunctionCallId: functionCallId,
 			MaxValues:      1,
-			Timeout:        55,
+			Timeout:        float32(pollTimeout.Seconds()),
 			LastEntryId:    "0-0",
 			ClearOnSuccess: true,
-			RequestedAt:    timeNow(),
+			RequestedAt:    timeNowSeconds(),
 		}.Build())
 		if err != nil {
-			return nil, fmt.Errorf("FunctionGetOutputs failed: %v", err)
+			return nil, fmt.Errorf("FunctionGetOutputs failed: %w", err)
 		}
 
 		// Output serialization may fail if any of the output items can't be deserialized
 		// into a supported Go type. Users are expected to serialize outputs correctly.
 		outputs := response.GetOutputs()
 		if len(outputs) > 0 {
-			return processResult(f.ctx, outputs[0].GetResult(), outputs[0].GetDataFormat())
+			return processResult(ctx, outputs[0].GetResult(), outputs[0].GetDataFormat())
 		}
+
+		remainingTime := timeout - time.Since(startTime)
+		if remainingTime <= 0 {
+			m := fmt.Sprintf("Timeout exceeded: %.1fs", timeout.Seconds())
+			return nil, FunctionTimeoutError{m}
+		}
+
+		// Add a small delay before next poll to avoid overloading backend.
+		time.Sleep(50 * time.Millisecond)
+		pollTimeout = minTimeout(OutputsTimeout, remainingTime)
 	}
+}
+
+// Spawn starts running a single input on a remote function.
+func (f *Function) Spawn(args []any, kwargs map[string]any) (*FunctionCall, error) {
+	invocationType := pb.FunctionCallInvocationType_FUNCTION_CALL_INVOCATION_TYPE_ASYNC
+	functionCallId, err := f.execFunctionCall(args, kwargs, invocationType)
+	if err != nil {
+		return nil, err
+	}
+	functionCall := FunctionCall{
+		FunctionCallId: *functionCallId,
+		ctx:            f.ctx,
+	}
+	return &functionCall, nil
 }
 
 // processResult processes the result from an invocation.

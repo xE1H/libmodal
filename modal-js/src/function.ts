@@ -13,6 +13,7 @@ import {
 } from "../proto/modal_proto/api";
 import { LookupOptions } from "./app";
 import { client } from "./client";
+import { FunctionCall } from "./function_call";
 import { environmentName } from "./config";
 import {
   InternalFailure,
@@ -26,7 +27,10 @@ import { ClientError, Status } from "nice-grpc";
 // From: modal/_utils/blob_utils.py
 const maxObjectSizeBytes = 2 * 1024 * 1024; // 2 MiB
 
-function timeNow() {
+// From: modal-client/modal/_utils/function_utils.py
+export const outputsTimeout = 55 * 1000;
+
+function timeNowSeconds() {
   return Date.now() / 1e3;
 }
 
@@ -65,6 +69,32 @@ export class Function_ {
     args: any[] = [],
     kwargs: Record<string, any> = {},
   ): Promise<any> {
+    const functionCallId = await this.execFunctionCall(
+      args,
+      kwargs,
+      FunctionCallInvocationType.FUNCTION_CALL_INVOCATION_TYPE_SYNC,
+    );
+    return await pollFunctionOutput(functionCallId, outputsTimeout);
+  }
+
+  // Spawn a single input into a remote function.
+  async spawn(
+    args: any[] = [],
+    kwargs: Record<string, any> = {},
+  ): Promise<FunctionCall> {
+    const functionCallId = await this.execFunctionCall(
+      args,
+      kwargs,
+      FunctionCallInvocationType.FUNCTION_CALL_INVOCATION_TYPE_SYNC,
+    );
+    return new FunctionCall(functionCallId);
+  }
+
+  async execFunctionCall(
+    args: any[] = [],
+    kwargs: Record<string, any> = {},
+    invocationType: FunctionCallInvocationType = FunctionCallInvocationType.FUNCTION_CALL_INVOCATION_TYPE_SYNC,
+  ): Promise<string> {
     const payload = dumps([args, kwargs]);
 
     let argsBlobId: string | undefined = undefined;
@@ -76,8 +106,7 @@ export class Function_ {
     const functionMapResponse = await client.functionMap({
       functionId: this.functionId,
       functionCallType: FunctionCallType.FUNCTION_CALL_TYPE_UNARY,
-      functionCallInvocationType:
-        FunctionCallInvocationType.FUNCTION_CALL_INVOCATION_TYPE_SYNC,
+      functionCallInvocationType: invocationType,
       pipelinedInputs: [
         {
           idx: 0,
@@ -91,20 +120,50 @@ export class Function_ {
       ],
     });
 
-    while (true) {
+    return functionMapResponse.functionCallId;
+  }
+}
+
+export async function pollFunctionOutput(
+  functionCallId: string,
+  timeout: number, // in milliseconds
+): Promise<any> {
+  const startTime = Date.now();
+
+  // Calculate initial backend timeout
+  let pollTimeout = Math.min(outputsTimeout, timeout);
+
+  while (true) {
+    try {
       const response = await client.functionGetOutputs({
-        functionCallId: functionMapResponse.functionCallId,
+        functionCallId: functionCallId,
         maxValues: 1,
-        timeout: 55,
+        timeout: pollTimeout / 1000, // Backend needs seconds
         lastEntryId: "0-0",
         clearOnSuccess: true,
-        requestedAt: timeNow(),
+        requestedAt: timeNowSeconds(),
       });
 
       const outputs = response.outputs;
       if (outputs.length > 0) {
         return await processResult(outputs[0].result, outputs[0].dataFormat);
       }
+
+      const remainingTime = timeout - (Date.now() - startTime);
+      if (remainingTime <= 0) {
+        const message = `Timeout exceeded: ${(timeout / 1000).toFixed(1)}s`;
+        throw new FunctionTimeoutError(message);
+      }
+
+      // Add a small delay before next poll to avoid overloading backend
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      pollTimeout = Math.min(outputsTimeout, remainingTime);
+    } catch (error) {
+      if (error instanceof FunctionTimeoutError) {
+        throw error;
+      }
+      throw new Error(`FunctionGetOutputs failed: ${error}`);
     }
   }
 }
