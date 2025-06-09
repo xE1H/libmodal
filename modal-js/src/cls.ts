@@ -1,11 +1,9 @@
 import { ClientError, Status } from "nice-grpc";
-import type {
-  ClassParameterSpec,
-  ClassParameterValue,
-} from "../proto/modal_proto/api";
 import {
   ClassParameterInfo_ParameterSerializationFormat,
   ClassParameterSet,
+  ClassParameterSpec,
+  ClassParameterValue,
   DeploymentNamespace,
   ParameterType,
 } from "../proto/modal_proto/api";

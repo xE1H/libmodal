@@ -1,7 +1,8 @@
 import { FileDescriptor } from "../proto/modal_proto/api";
 import { client, isRetryableGrpc } from "./client";
-import type { ModalReadStream, ModalWriteStream } from "./streams";
 import {
+  type ModalReadStream,
+  type ModalWriteStream,
   streamConsumingIter,
   toModalReadStream,
   toModalWriteStream,

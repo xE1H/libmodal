@@ -37,7 +37,8 @@ export default defineConfig([
           ignoreRestSiblings: true,
         },
       ],
-      "@typescript-eslint/consistent-type-imports": "warn",
+      // We added this lint because `tsx` gets confused when you export types
+      // without using the `type` keyword.
       "@typescript-eslint/consistent-type-exports": "error",
     },
   },

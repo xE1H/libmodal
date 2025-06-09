@@ -1,11 +1,9 @@
-import type {
-  GenericResult,
-  ImageMetadata,
-  ImageRegistryConfig,
-} from "../proto/modal_proto/api";
 import {
   DeploymentNamespace,
+  GenericResult,
   GenericResult_GenericStatus,
+  ImageMetadata,
+  ImageRegistryConfig,
 } from "../proto/modal_proto/api";
 import { client } from "./client";
 import { imageBuilderVersion } from "./config";
