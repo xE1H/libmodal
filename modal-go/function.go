@@ -38,7 +38,10 @@ type Function struct {
 }
 
 // FunctionLookup looks up an existing Function.
-func FunctionLookup(ctx context.Context, appName string, name string, options LookupOptions) (*Function, error) {
+func FunctionLookup(ctx context.Context, appName string, name string, options *LookupOptions) (*Function, error) {
+	if options == nil {
+		options = &LookupOptions{}
+	}
 	ctx = clientContext(ctx)
 
 	resp, err := client.FunctionGet(ctx, pb.FunctionGetRequest_builder{
@@ -58,15 +61,12 @@ func FunctionLookup(ctx context.Context, appName string, name string, options Lo
 	return &Function{FunctionId: resp.GetFunctionId(), ctx: ctx}, nil
 }
 
-// Serialize function inputs to the Python pickle format.
-func pickleSerialize(args []any, kwargs map[string]any) (bytes.Buffer, error) {
+// Serialize Go data types to the Python pickle format.
+func pickleSerialize(v any) (bytes.Buffer, error) {
 	var inputBuffer bytes.Buffer
 
 	e := pickle.NewEncoder(&inputBuffer)
-	err := e.Encode(pickle.Tuple{
-		args,
-		kwargs,
-	})
+	err := e.Encode(v)
 
 	if err != nil {
 		return bytes.Buffer{}, fmt.Errorf("error pickling data: %w", err)
@@ -86,7 +86,7 @@ func pickleDeserialize(buffer []byte) (any, error) {
 
 // Serializes inputs, make a function call and return its ID
 func (f *Function) execFunctionCall(args []any, kwargs map[string]any, invocationType pb.FunctionCallInvocationType) (*string, error) {
-	payload, err := pickleSerialize(args, kwargs)
+	payload, err := pickleSerialize(pickle.Tuple{args, kwargs})
 	if err != nil {
 		return nil, err
 	}

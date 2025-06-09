@@ -22,6 +22,16 @@ type LookupOptions struct {
 	CreateIfMissing bool
 }
 
+// DeleteOptions are options for deleting a named object.
+type DeleteOptions struct {
+	Environment string // Environment to delete the object from.
+}
+
+// EphemeralOptions are options for creating a temporary, nameless object.
+type EphemeralOptions struct {
+	Environment string // Environment to create the object in.
+}
+
 // SandboxOptions are options for creating a Modal Sandbox.
 type SandboxOptions struct {
 	CPU     float64       // CPU request in physical cores.
@@ -31,7 +41,10 @@ type SandboxOptions struct {
 }
 
 // AppLookup looks up an existing App, or creates an empty one.
-func AppLookup(ctx context.Context, name string, options LookupOptions) (*App, error) {
+func AppLookup(ctx context.Context, name string, options *LookupOptions) (*App, error) {
+	if options == nil {
+		options = &LookupOptions{}
+	}
 	ctx = clientContext(ctx)
 
 	creationType := pb.ObjectCreationType_OBJECT_CREATION_TYPE_UNSPECIFIED
@@ -56,7 +69,10 @@ func AppLookup(ctx context.Context, name string, options LookupOptions) (*App, e
 }
 
 // CreateSandbox creates a new Sandbox in the App with the specified image and options.
-func (app *App) CreateSandbox(image *Image, options SandboxOptions) (*Sandbox, error) {
+func (app *App) CreateSandbox(image *Image, options *SandboxOptions) (*Sandbox, error) {
+	if options == nil {
+		options = &SandboxOptions{}
+	}
 	createResp, err := client.SandboxCreate(app.ctx, pb.SandboxCreateRequest_builder{
 		AppId: app.AppId,
 		Definition: pb.Sandbox_builder{
