@@ -13,5 +13,5 @@
       "modal": ["./src/index.ts"]
     }
   },
-  "include": ["src", "examples"]
+  "include": ["src", "examples", "test", "*.config.ts"]
 }

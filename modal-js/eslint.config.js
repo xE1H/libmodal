@@ -16,6 +16,13 @@ export default defineConfig([
   },
   tseslint.configs.recommended,
   {
+    files: ["**/*.{ts,mts,cts}"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": [
@@ -30,6 +37,8 @@ export default defineConfig([
           ignoreRestSiblings: true,
         },
       ],
+      "@typescript-eslint/consistent-type-imports": "warn",
+      "@typescript-eslint/consistent-type-exports": "error",
     },
   },
 ]);
