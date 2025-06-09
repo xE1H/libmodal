@@ -4,6 +4,10 @@ Both client libraries are pre-1.0, and they have separate versioning.
 
 ## Unreleased
 
+No changes yet.
+
+## modal-js/v0.3.6, modal-go/v0.0.7
+
 - Added support for the `Queue` object to manage distributed FIFO queues.
   - Queues have a similar interface as Python, with `put()` and `get()` being the primary methods.
   - You can put structured objects onto Queues, with limited support for the pickle format.
