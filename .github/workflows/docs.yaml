@@ -6,6 +6,9 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 permissions: # required for GitHub Pages
   contents: read
   pages: write
