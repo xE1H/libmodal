@@ -16,5 +16,5 @@ Now you can run tests in each language.
 cd modal-js && npm run build && npm test
 
 # Go
-cd modal-go && go test -v -count=1 -parallel=10 ./test
+cd modal-go && go test -v -count=1 -parallel=10 . ./test
 ```
