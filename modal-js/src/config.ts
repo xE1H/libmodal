@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
+import path from "node:path";
 import { parse as parseToml } from "smol-toml";
 
 /** Raw representation of the .modal.toml file. */
@@ -24,9 +24,9 @@ export interface Profile {
   imageBuilderVersion?: string;
 }
 
-async function readConfigFile(): Promise<Config> {
+function readConfigFile(): Config {
   try {
-    const configContent = await readFile(path.join(homedir(), ".modal.toml"), {
+    const configContent = readFileSync(path.join(homedir(), ".modal.toml"), {
       encoding: "utf-8",
     });
     return parseToml(configContent) as Config;
@@ -38,8 +38,12 @@ async function readConfigFile(): Promise<Config> {
   }
 }
 
-// Top-level await on module startup.
-const config: Config = await readConfigFile();
+// Synchronous on startup to avoid top-level await in CJS output.
+//
+// Any performance impact is minor because the .modal.toml file is small and
+// only read once. This is comparable to how OpenSSL certificates can be probed
+// synchronously, for instance.
+const config: Config = readConfigFile();
 
 export function getProfile(profileName?: string): Profile {
   profileName = profileName || process.env["MODAL_PROFILE"] || undefined;
