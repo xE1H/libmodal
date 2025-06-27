@@ -6,6 +6,10 @@ Both client libraries are pre-1.0, and they have separate versioning.
 
 No unreleased changes.
 
+## modal-js/v0.3.9, modal-go/v0.0.9
+
+- Added support for Sandbox filesystem.
+
 ## modal-js/v0.3.8
 
 - Added support for CommonJS format / `require()`. Previously, modal-js only supported ESM `import`.
