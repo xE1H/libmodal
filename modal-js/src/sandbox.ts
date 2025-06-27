@@ -1,6 +1,11 @@
 import { FileDescriptor } from "../proto/modal_proto/api";
 import { client, isRetryableGrpc } from "./client";
 import {
+  runFilesystemExec,
+  SandboxFile,
+  SandboxFileMode,
+} from "./sandbox_filesystem";
+import {
   type ModalReadStream,
   type ModalWriteStream,
   streamConsumingIter,
@@ -56,6 +61,26 @@ export class Sandbox {
     );
   }
 
+  /**
+   * Open a file in the sandbox filesystem.
+   * @param path - Path to the file to open
+   * @param mode - File open mode (r, w, a, r+, w+, a+)
+   * @returns Promise that resolves to a SandboxFile
+   */
+  async open(path: string, mode: SandboxFileMode = "r"): Promise<SandboxFile> {
+    const taskId = await this.#getTaskId();
+    const resp = await runFilesystemExec({
+      fileOpenRequest: {
+        path,
+        mode,
+      },
+      taskId: taskId,
+    });
+    // For Open request, the file descriptor is always set
+    const fileDescriptor = resp.response.fileDescriptor as string;
+    return new SandboxFile(fileDescriptor, taskId);
+  }
+
   async exec(
     command: string[],
     options?: ExecOptions & { mode?: "text" },
@@ -74,6 +99,17 @@ export class Sandbox {
       stderr?: StdioBehavior;
     },
   ): Promise<ContainerProcess> {
+    const taskId = await this.#getTaskId();
+
+    const resp = await client.containerExec({
+      taskId: taskId,
+      command,
+    });
+
+    return new ContainerProcess(resp.execId, options);
+  }
+
+  async #getTaskId(): Promise<string> {
     if (this.#taskId === undefined) {
       const resp = await client.sandboxGetTaskId({
         sandboxId: this.sandboxId,
@@ -90,13 +126,7 @@ export class Sandbox {
       }
       this.#taskId = resp.taskId;
     }
-
-    const resp = await client.containerExec({
-      taskId: this.#taskId,
-      command,
-    });
-
-    return new ContainerProcess(resp.execId, options);
+    return this.#taskId;
   }
 
   async terminate(): Promise<void> {
