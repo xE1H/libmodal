@@ -30,9 +30,16 @@ export type StreamMode = "text" | "binary";
 
 /** Options to configure a `Sandbox.exec()` operation. */
 export type ExecOptions = {
+  /** Specifies text or binary encoding for input and output streams. */
   mode?: StreamMode;
+  /** Whether to pipe or ignore standard output. */
   stdout?: StdioBehavior;
+  /** Whether to pipe or ignore standard error. */
   stderr?: StdioBehavior;
+  /** Working directory to run the command in. */
+  workdir?: string;
+  /** Timeout for the process in milliseconds. Defaults to 0 (no timeout). */
+  timeout?: number;
 };
 
 /** Sandboxes are secure, isolated containers in Modal that boot in seconds. */
@@ -97,6 +104,8 @@ export class Sandbox {
       mode?: StreamMode;
       stdout?: StdioBehavior;
       stderr?: StdioBehavior;
+      workdir?: string;
+      timeout?: number;
     },
   ): Promise<ContainerProcess> {
     const taskId = await this.#getTaskId();
@@ -104,6 +113,8 @@ export class Sandbox {
     const resp = await client.containerExec({
       taskId,
       command,
+      workdir: options?.workdir,
+      timeoutSecs: options?.timeout ? options.timeout / 1000 : 0,
     });
 
     return new ContainerProcess(resp.execId, options);
