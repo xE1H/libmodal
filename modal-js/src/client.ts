@@ -11,7 +11,9 @@ import {
 } from "nice-grpc";
 
 import { ClientType, ModalClientDefinition } from "../proto/modal_proto/api";
-import { type Profile, profile } from "./config";
+import { getProfile, type Profile } from "./config";
+
+const defaultProfile = getProfile(process.env["MODAL_PROFILE"]);
 
 /** gRPC client middleware to add auth token to request. */
 function authMiddleware(profile: Profile): ClientMiddleware {
@@ -19,14 +21,21 @@ function authMiddleware(profile: Profile): ClientMiddleware {
     call: ClientMiddlewareCall<Request, Response>,
     options: CallOptions,
   ) {
+    if (!profile.tokenId || !profile.tokenSecret) {
+      throw new Error(
+        `Profile is missing token_id or token_secret. Please set them in .modal.toml, or as environment variables, or initializeClient().`,
+      );
+    }
+    const { tokenId, tokenSecret } = profile;
+
     options.metadata ??= new Metadata();
     options.metadata.set(
       "x-modal-client-type",
       String(ClientType.CLIENT_TYPE_LIBMODAL),
     );
     options.metadata.set("x-modal-client-version", "1.0.0"); // CLIENT VERSION: Behaves like this Python SDK version
-    options.metadata.set("x-modal-token-id", profile.tokenId);
-    options.metadata.set("x-modal-token-secret", profile.tokenSecret);
+    options.metadata.set("x-modal-token-id", tokenId);
+    options.metadata.set("x-modal-token-secret", tokenSecret);
     return yield* call.next(call.request, options);
   };
 }
@@ -190,15 +199,46 @@ const retryMiddleware: ClientMiddleware<RetryOptions> =
     }
   };
 
-// Ref: https://github.com/modal-labs/modal-client/blob/main/modal/_utils/grpc_utils.py
-const channel = createChannel(profile.serverUrl, undefined, {
-  "grpc.max_receive_message_length": 100 * 1024 * 1024,
-  "grpc.max_send_message_length": 100 * 1024 * 1024,
-  "grpc-node.flow_control_window": 64 * 1024 * 1024,
-});
+function createClient(profile: Profile) {
+  // Channels don't do anything until you send a request on them.
+  // Ref: https://github.com/modal-labs/modal-client/blob/main/modal/_utils/grpc_utils.py
+  const channel = createChannel(profile.serverUrl, undefined, {
+    "grpc.max_receive_message_length": 100 * 1024 * 1024,
+    "grpc.max_send_message_length": 100 * 1024 * 1024,
+    "grpc-node.flow_control_window": 64 * 1024 * 1024,
+  });
 
-export const client = createClientFactory()
-  .use(authMiddleware(profile))
-  .use(retryMiddleware)
-  .use(timeoutMiddleware)
-  .create(ModalClientDefinition, channel);
+  return createClientFactory()
+    .use(authMiddleware(profile))
+    .use(retryMiddleware)
+    .use(timeoutMiddleware)
+    .create(ModalClientDefinition, channel);
+}
+
+export let clientProfile = defaultProfile;
+
+export let client = createClient(clientProfile);
+
+/** Options for initializing a client at runtime. */
+export type ClientOptions = {
+  tokenId: string;
+  tokenSecret: string;
+  environment?: string;
+};
+
+/**
+ * Initialize the Modal client, passing in token authentication credentials.
+ *
+ * You should call this function at the start of your application if not
+ * configuring Modal with a `.modal.toml` file or environment variables.
+ */
+export function initializeClient(options: ClientOptions) {
+  const mergedProfile = {
+    ...defaultProfile,
+    tokenId: options.tokenId,
+    tokenSecret: options.tokenSecret,
+    environment: options.environment || defaultProfile.environment,
+  };
+  clientProfile = mergedProfile;
+  client = createClient(mergedProfile);
+}

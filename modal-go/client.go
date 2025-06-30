@@ -5,6 +5,8 @@ package modal
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -68,20 +70,42 @@ var defaultConfig config
 // defaultProfile is resolved at package init from MODAL_PROFILE, ~/.modal.toml, etc.
 var defaultProfile Profile
 
+// clientProfile is the actual profile, from defaultProfile + InitializeClient().
+var clientProfile Profile
+
 var client pb.ModalClientClient
 
 func init() {
-	var err error
 	defaultConfig, _ = readConfigFile()
-	defaultProfile, err = GetProfile("")
+	defaultProfile = getProfile(os.Getenv("MODAL_PROFILE"))
+	clientProfile = defaultProfile
+	var err error
+	_, client, err = newClient(clientProfile)
 	if err != nil {
-		panic(err) // fail fast – credentials are required to proceed
+		panic(fmt.Sprintf("failed to initialize Modal client at startup: %v", err))
 	}
+}
 
-	_, client, err = newClient(defaultProfile)
-	if err != nil {
-		panic(err)
-	}
+// ClientOptions defines credentials and options for initializing the Modal client at runtime.
+type ClientOptions struct {
+	TokenId     string
+	TokenSecret string
+	Environment string // optional, defaults to the profile's environment
+}
+
+// InitializeClient updates the global Modal client configuration with the provided options.
+//
+// This function is useful when you want to set the client options programmatically. It
+// should be called once at the start of your application.
+func InitializeClient(options ClientOptions) error {
+	mergedProfile := defaultProfile
+	mergedProfile.TokenId = options.TokenId
+	mergedProfile.TokenSecret = options.TokenSecret
+	mergedProfile.Environment = firstNonEmpty(options.Environment, mergedProfile.Environment)
+	clientProfile = mergedProfile
+	var err error
+	_, client, err = newClient(mergedProfile)
+	return err
 }
 
 // newClient dials api.modal.com with auth/timeout/retry interceptors installed.
@@ -89,11 +113,11 @@ func init() {
 func newClient(profile Profile) (*grpc.ClientConn, pb.ModalClientClient, error) {
 	var target string
 	var creds credentials.TransportCredentials
-	if strings.HasPrefix(profile.ServerURL, "https://") {
-		target = strings.TrimPrefix(profile.ServerURL, "https://")
+	if after, ok := strings.CutPrefix(profile.ServerURL, "https://"); ok {
+		target = after
 		creds = credentials.NewTLS(&tls.Config{})
-	} else if strings.HasPrefix(profile.ServerURL, "http://") {
-		target = strings.TrimPrefix(profile.ServerURL, "http://")
+	} else if after, ok := strings.CutPrefix(profile.ServerURL, "http://"); ok {
+		target = after
 		creds = insecure.NewCredentials()
 	} else {
 		return nil, nil, status.Errorf(codes.InvalidArgument, "invalid server URL: %s", profile.ServerURL)
@@ -118,15 +142,19 @@ func newClient(profile Profile) (*grpc.ClientConn, pb.ModalClientClient, error) 
 }
 
 // clientContext returns a context with the default profile's auth headers.
-func clientContext(ctx context.Context) context.Context {
+func clientContext(ctx context.Context) (context.Context, error) {
+	if clientProfile.TokenId == "" || clientProfile.TokenSecret == "" {
+		return nil, fmt.Errorf("missing token_id or token_secret, please set in .modal.toml, environment variables, or via InitializeClient()")
+	}
+
 	clientType := strconv.Itoa(int(pb.ClientType_CLIENT_TYPE_LIBMODAL))
 	return metadata.AppendToOutgoingContext(
 		ctx,
 		"x-modal-client-type", clientType,
 		"x-modal-client-version", "1.0.0", // CLIENT VERSION: Behaves like this Python SDK version
-		"x-modal-token-id", defaultProfile.TokenId,
-		"x-modal-token-secret", defaultProfile.TokenSecret,
-	)
+		"x-modal-token-id", clientProfile.TokenId,
+		"x-modal-token-secret", clientProfile.TokenSecret,
+	), nil
 }
 
 func timeoutInterceptor() grpc.UnaryClientInterceptor {

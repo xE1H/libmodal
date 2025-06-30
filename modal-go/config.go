@@ -15,8 +15,8 @@ import (
 // Profile holds a fully-resolved configuration ready for use by the client.
 type Profile struct {
 	ServerURL           string // e.g. https://api.modal.com:443
-	TokenId             string
-	TokenSecret         string
+	TokenId             string // optional (if InitializeClient is called)
+	TokenSecret         string // optional (if InitializeClient is called)
 	Environment         string // optional
 	ImageBuilderVersion string // optional
 }
@@ -55,20 +55,11 @@ func readConfigFile() (config, error) {
 	return cfg, nil
 }
 
-// GetProfile resolves a profile by name.  Pass an empty string to follow the
-// same precedence as the TypeScript original:
-//
-//  1. MODAL_PROFILE env var
-//  2. first profile in the file with active = true
+// getProfile resolves a profile by name. Pass an empty string to instead return
+// the first profile in the configuration file with `active = true`.
 //
 // Returned Profile is ready for use; error describes what is missing.
-func GetProfile(name string) (Profile, error) {
-	// 1. explicit argument overrides everything
-	if name == "" {
-		name = os.Getenv("MODAL_PROFILE")
-	}
-
-	// 2. look for `active = true` if still unspecified
+func getProfile(name string) Profile {
 	if name == "" {
 		for n, p := range defaultConfig {
 			if p.Active {
@@ -78,22 +69,17 @@ func GetProfile(name string) (Profile, error) {
 		}
 	}
 
-	// 3. verify existence
-	raw, ok := defaultConfig[name]
-	if name != "" && !ok {
-		return Profile{}, fmt.Errorf("profile %q not found in ~/.modal.toml", name)
+	var raw rawProfile
+	if name != "" {
+		raw = defaultConfig[name]
 	}
 
-	// 4. env-vars override file values
+	// Env-vars override file values.
 	serverURL := firstNonEmpty(os.Getenv("MODAL_SERVER_URL"), raw.ServerURL, "https://api.modal.com:443")
 	tokenId := firstNonEmpty(os.Getenv("MODAL_TOKEN_ID"), raw.TokenId)
 	tokenSecret := firstNonEmpty(os.Getenv("MODAL_TOKEN_SECRET"), raw.TokenSecret)
 	environment := firstNonEmpty(os.Getenv("MODAL_ENVIRONMENT"), raw.Environment)
 	imageBuilderVersion := firstNonEmpty(os.Getenv("MODAL_IMAGE_BUILDER_VERSION"), raw.ImageBuilderVersion)
-
-	if tokenId == "" || tokenSecret == "" {
-		return Profile{}, fmt.Errorf("profile %q missing token_id or token_secret (env-vars take precedence)", name)
-	}
 
 	return Profile{
 		ServerURL:           serverURL,
@@ -101,7 +87,7 @@ func GetProfile(name string) (Profile, error) {
 		TokenSecret:         tokenSecret,
 		Environment:         environment,
 		ImageBuilderVersion: imageBuilderVersion,
-	}, nil
+	}
 }
 
 func firstNonEmpty(values ...string) string {
@@ -114,9 +100,9 @@ func firstNonEmpty(values ...string) string {
 }
 
 func environmentName(environment string) string {
-	return firstNonEmpty(environment, defaultProfile.Environment)
+	return firstNonEmpty(environment, clientProfile.Environment)
 }
 
 func imageBuilderVersion(version string) string {
-	return firstNonEmpty(version, defaultProfile.ImageBuilderVersion, "2024.10")
+	return firstNonEmpty(version, clientProfile.ImageBuilderVersion, "2024.10")
 }

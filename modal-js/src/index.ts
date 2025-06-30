@@ -5,6 +5,7 @@ export {
   type LookupOptions,
   type SandboxCreateOptions,
 } from "./app";
+export { type ClientOptions, initializeClient } from "./client";
 export { Cls, ClsInstance } from "./cls";
 export {
   FunctionTimeoutError,
