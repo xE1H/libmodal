@@ -1,6 +1,6 @@
 {
   "name": "modal",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "description": "Modal client library for JavaScript",
   "license": "Apache-2.0",
   "homepage": "https://modal.com/docs",
@@ -33,7 +33,7 @@
     "lint": "eslint",
     "prepare": "scripts/gen-proto.sh",
     "test": "vitest",
-    "version": "npm run check && git add package.json package-lock.json && git commit -m \"modal-js/v$npm_package_version\"",
+    "version": "npm run check && git add -A && git commit -m \"modal-js/v$npm_package_version\"",
     "prepublishOnly": "npm run build && git push",
     "postpublish": "git tag modal-js/v$npm_package_version && git push --tags"
   },

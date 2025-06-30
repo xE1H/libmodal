@@ -4,6 +4,10 @@ Both client libraries are pre-1.0, and they have separate versioning.
 
 ## Unreleased
 
+No unreleased changes.
+
+## modal-js/v0.3.11, modal-go/v0.0.11
+
 - Add `InitializeClient()` (Go) / `initializeClient()` (TS) to initialize the client at runtime with credentials.
 - Client libraries no longer panic at startup if no token ID / secret is provided. Instead, they will throw an error when trying to use the client.
 
