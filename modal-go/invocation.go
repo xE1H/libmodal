@@ -11,6 +11,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type invocation interface {
+	awaitOutput(timeout *time.Duration) (any, error)
+	retry(retryCount uint32) error
+}
+
 // controlPlaneInvocation implements the invocation interface.
 type controlPlaneInvocation struct {
 	FunctionCallId  string
@@ -52,7 +57,7 @@ func controlPlaneInvocationFromFunctionCallId(ctx context.Context, functionCallI
 }
 
 func (c *controlPlaneInvocation) awaitOutput(timeout *time.Duration) (any, error) {
-	return pollFunctionOutput(c.ctx, c.FunctionCallId, timeout)
+	return pollFunctionOutput(c.ctx, c.getOutput, timeout)
 }
 
 func (c *controlPlaneInvocation) retry(retryCount uint32) error {
@@ -75,8 +80,102 @@ func (c *controlPlaneInvocation) retry(retryCount uint32) error {
 	return nil
 }
 
-// Poll for outputs for a given FunctionCall ID.
-func pollFunctionOutput(ctx context.Context, functionCallId string, timeout *time.Duration) (any, error) {
+// getOutput fetches the output for the current function call with a timeout in milliseconds.
+func (c *controlPlaneInvocation) getOutput(timeout time.Duration) (*pb.FunctionGetOutputsItem, error) {
+	response, err := client.FunctionGetOutputs(c.ctx, pb.FunctionGetOutputsRequest_builder{
+		FunctionCallId: c.FunctionCallId,
+		MaxValues:      1,
+		Timeout:        float32(timeout.Seconds()),
+		LastEntryId:    "0-0",
+		ClearOnSuccess: true,
+		RequestedAt:    timeNowSeconds(),
+	}.Build())
+	if err != nil {
+		return nil, fmt.Errorf("FunctionGetOutputs failed: %w", err)
+	}
+	outputs := response.GetOutputs()
+	if len(outputs) > 0 {
+		return outputs[0], nil
+	}
+	return nil, nil
+}
+
+// InputPlaneInvocation implements the Invocation interface for the input plane.
+type inputPlaneInvocation struct {
+	client       pb.ModalClientClient
+	functionId   string
+	input        *pb.FunctionPutInputsItem
+	attemptToken string
+	ctx          context.Context
+}
+
+// CreateInputPlaneInvocation creates a new InputPlaneInvocation by starting an attempt.
+func createInputPlaneInvocation(ctx context.Context, inputPlaneURL string, functionId string, input *pb.FunctionInput) (*inputPlaneInvocation, error) {
+	functionPutInputsItem := pb.FunctionPutInputsItem_builder{
+		Idx:   0,
+		Input: input,
+	}.Build()
+	client, err := getOrCreateInputPlaneClient(inputPlaneURL)
+	if err != nil {
+		return nil, err
+	}
+	attemptStartResp, err := client.AttemptStart(ctx, pb.AttemptStartRequest_builder{
+		FunctionId: functionId,
+		Input:      functionPutInputsItem,
+	}.Build())
+	if err != nil {
+		return nil, err
+	}
+	return &inputPlaneInvocation{
+		client:       client,
+		functionId:   functionId,
+		input:        functionPutInputsItem,
+		attemptToken: attemptStartResp.GetAttemptToken(),
+		ctx:          ctx,
+	}, nil
+}
+
+// awaitOutput waits for the output with an optional timeout.
+func (i *inputPlaneInvocation) awaitOutput(timeout *time.Duration) (any, error) {
+	return pollFunctionOutput(i.ctx, i.getOutput, timeout)
+}
+
+// getOutput fetches the output for the current attempt.
+func (i *inputPlaneInvocation) getOutput(timeout time.Duration) (*pb.FunctionGetOutputsItem, error) {
+	resp, err := i.client.AttemptAwait(i.ctx, pb.AttemptAwaitRequest_builder{
+		AttemptToken: i.attemptToken,
+		RequestedAt:  timeNowSeconds(),
+		TimeoutSecs:  float32(timeout.Seconds()),
+	}.Build())
+	if err != nil {
+		return nil, fmt.Errorf("AttemptAwait failed: %w", err)
+	}
+	return resp.GetOutput(), nil
+}
+
+// retry retries the invocation.
+func (i *inputPlaneInvocation) retry(retryCount uint32) error {
+	// We ignore retryCount - it is used only by controlPlaneInvocation.
+	resp, err := i.client.AttemptRetry(context.Background(), pb.AttemptRetryRequest_builder{
+		FunctionId:   i.functionId,
+		Input:        i.input,
+		AttemptToken: i.attemptToken,
+	}.Build())
+	if err != nil {
+		return err
+	}
+	i.attemptToken = resp.GetAttemptToken()
+	return nil
+}
+
+// getOutput is a function type that takes a timeout and returns a FunctionGetOutputsItem or nil, and an error.
+// Used by `pollForOutputs` to fetch from either the control plane or the input plane, depending on the implementation.
+type getOutput func(timeout time.Duration) (*pb.FunctionGetOutputsItem, error)
+
+// pollFunctionOutput repeatedly tries to fetch an output using the provided `getOutput` function, and the specified
+// timeout value. We use a timeout value of 55 seconds if the caller does not specify a timeout value, or if the
+// specified timeout value is greater than 55 seconds.
+func pollFunctionOutput(ctx context.Context, getOutput getOutput, timeout *time.Duration) (any, error) {
 	startTime := time.Now()
 	pollTimeout := outputsTimeout
 	if timeout != nil {
@@ -85,23 +184,14 @@ func pollFunctionOutput(ctx context.Context, functionCallId string, timeout *tim
 	}
 
 	for {
-		response, err := client.FunctionGetOutputs(ctx, pb.FunctionGetOutputsRequest_builder{
-			FunctionCallId: functionCallId,
-			MaxValues:      1,
-			Timeout:        float32(pollTimeout.Seconds()),
-			LastEntryId:    "0-0",
-			ClearOnSuccess: true,
-			RequestedAt:    timeNowSeconds(),
-		}.Build())
+		output, err := getOutput(pollTimeout)
 		if err != nil {
-			return nil, fmt.Errorf("FunctionGetOutputs failed: %w", err)
+			return nil, err
 		}
-
 		// Output serialization may fail if any of the output items can't be deserialized
 		// into a supported Go type. Users are expected to serialize outputs correctly.
-		outputs := response.GetOutputs()
-		if len(outputs) > 0 {
-			return processResult(ctx, outputs[0].GetResult(), outputs[0].GetDataFormat())
+		if output != nil {
+			return processResult(ctx, output.GetResult(), output.GetDataFormat())
 		}
 
 		if timeout != nil {

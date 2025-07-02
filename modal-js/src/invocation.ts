@@ -2,14 +2,16 @@ import {
   DataFormat,
   FunctionCallInvocationType,
   FunctionCallType,
-  FunctionGetOutputsResponse,
+  FunctionGetOutputsItem,
   FunctionInput,
+  FunctionPutInputsItem,
   FunctionRetryInputsItem,
   GeneratorDone,
   GenericResult,
   GenericResult_GenericStatus,
+  ModalClientClient,
 } from "../proto/modal_proto/api";
-import { client } from "./client";
+import { client, getOrCreateInputPlaneClient } from "./client";
 import { FunctionTimeoutError, InternalFailure, RemoteError } from "./errors";
 import { loads } from "./pickle";
 
@@ -78,7 +80,24 @@ export class ControlPlaneInvocation implements Invocation {
   }
 
   async awaitOutput(timeout?: number): Promise<any> {
-    return await pollFunctionOutput(this.functionCallId, timeout);
+    return await pollFunctionOutput(
+      (timeoutMillis: number) => this.#getOutput(timeoutMillis),
+      timeout,
+    );
+  }
+
+  async #getOutput(
+    timeoutMillis: number,
+  ): Promise<FunctionGetOutputsItem | undefined> {
+    const response = await client.functionGetOutputs({
+      functionCallId: this.functionCallId,
+      maxValues: 1,
+      timeout: timeoutMillis / 1000, // Backend needs seconds
+      lastEntryId: "0-0",
+      clearOnSuccess: true,
+      requestedAt: timeNowSeconds(),
+    });
+    return response.outputs ? response.outputs[0] : undefined;
   }
 
   async retry(retryCount: number): Promise<void> {
@@ -101,12 +120,97 @@ export class ControlPlaneInvocation implements Invocation {
   }
 }
 
+/**
+ * Implementation of Invocation which sends inputs to the input plane.
+ */
+export class InputPlaneInvocation implements Invocation {
+  private readonly client: ModalClientClient;
+  private readonly functionId: string;
+  private readonly input: FunctionPutInputsItem;
+  private attemptToken: string;
+
+  constructor(
+    client: ModalClientClient,
+    functionId: string,
+    input: FunctionPutInputsItem,
+    attemptToken: string,
+  ) {
+    this.client = client;
+    this.functionId = functionId;
+    this.input = input;
+    this.attemptToken = attemptToken;
+  }
+
+  static async create(
+    inputPlaneUrl: string,
+    functionId: string,
+    input: FunctionInput,
+  ) {
+    const functionPutInputsItem = {
+      idx: 0,
+      input,
+    };
+    const client = getOrCreateInputPlaneClient(inputPlaneUrl);
+    // Single input sync invocation
+    const attemptStartResponse = await client.attemptStart({
+      functionId,
+      input: functionPutInputsItem,
+    });
+    return new InputPlaneInvocation(
+      client,
+      functionId,
+      functionPutInputsItem,
+      attemptStartResponse.attemptToken,
+    );
+  }
+
+  async awaitOutput(timeout?: number): Promise<any> {
+    return await pollFunctionOutput(
+      (timeoutMillis: number) => this.#getOutput(timeoutMillis),
+      timeout,
+    );
+  }
+
+  async #getOutput(
+    timeoutMillis: number,
+  ): Promise<FunctionGetOutputsItem | undefined> {
+    const response = await this.client.attemptAwait({
+      attemptToken: this.attemptToken,
+      requestedAt: timeNowSeconds(),
+      timeoutSecs: timeoutMillis / 1000,
+    });
+    return response.output;
+  }
+
+  async retry(_retryCount: number): Promise<void> {
+    const attemptRetryResponse = await this.client.attemptRetry({
+      functionId: this.functionId,
+      input: this.input,
+      attemptToken: this.attemptToken,
+    });
+    this.attemptToken = attemptRetryResponse.attemptToken;
+  }
+}
+
 function timeNowSeconds() {
   return Date.now() / 1e3;
 }
 
-export async function pollFunctionOutput(
-  functionCallId: string,
+/**
+ * Signature of a function that fetches a single output using the given timeout. Used by `pollForOutputs` to fetch
+ * from either the control plane or the input plane, depending on the implementation.
+ */
+type GetOutput = (
+  timeoutMillis: number,
+) => Promise<FunctionGetOutputsItem | undefined>;
+
+/***
+ * Repeatedly tries to fetch an output using the provided `getOutput` function, and the specified timeout value.
+ * We use a timeout value of 55 seconds if the caller does not specify a timeout value, or if the specified timeout
+ * value is greater than 55 seconds.
+ */
+async function pollFunctionOutput(
+  getOutput: GetOutput,
   timeout?: number, // in milliseconds
 ): Promise<any> {
   const startTime = Date.now();
@@ -116,23 +220,9 @@ export async function pollFunctionOutput(
   }
 
   while (true) {
-    let response: FunctionGetOutputsResponse;
-    try {
-      response = await client.functionGetOutputs({
-        functionCallId,
-        maxValues: 1,
-        timeout: pollTimeout / 1000, // Backend needs seconds
-        lastEntryId: "0-0",
-        clearOnSuccess: true,
-        requestedAt: timeNowSeconds(),
-      });
-    } catch (err) {
-      throw new Error(`FunctionGetOutputs failed: ${err}`);
-    }
-
-    const outputs = response.outputs;
-    if (outputs.length > 0) {
-      return await processResult(outputs[0].result, outputs[0].dataFormat);
+    const output = await getOutput(pollTimeout);
+    if (output) {
+      return await processResult(output.result, output.dataFormat);
     }
 
     if (timeout !== undefined) {

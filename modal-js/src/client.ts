@@ -15,6 +15,8 @@ import { getProfile, type Profile } from "./config";
 
 const defaultProfile = getProfile(process.env["MODAL_PROFILE"]);
 
+let modalAuthToken: string | undefined;
+
 /** gRPC client middleware to add auth token to request. */
 function authMiddleware(profile: Profile): ClientMiddleware {
   return async function* authMiddleware<Request, Response>(
@@ -36,6 +38,29 @@ function authMiddleware(profile: Profile): ClientMiddleware {
     options.metadata.set("x-modal-client-version", "1.0.0"); // CLIENT VERSION: Behaves like this Python SDK version
     options.metadata.set("x-modal-token-id", tokenId);
     options.metadata.set("x-modal-token-secret", tokenSecret);
+    if (modalAuthToken) {
+      options.metadata.set("x-modal-auth-token", modalAuthToken);
+    }
+
+    // We receive an auth token from the control plane on our first request. We then include that auth token in every
+    // subsequent request to both the control plane and the input plane. The python server returns it in the trailers,
+    // the worker returns it in the headers.
+    const prevOnHeader = options.onHeader;
+    options.onHeader = (header) => {
+      const token = header.get("x-modal-auth-token");
+      if (token) {
+        modalAuthToken = token;
+      }
+      prevOnHeader?.(header);
+    };
+    const prevOnTrailer = options.onTrailer;
+    options.onTrailer = (trailer) => {
+      const token = trailer.get("x-modal-auth-token");
+      if (token) {
+        modalAuthToken = token;
+      }
+      prevOnTrailer?.(trailer);
+    };
     return yield* call.next(call.request, options);
   };
 }
@@ -199,6 +224,23 @@ const retryMiddleware: ClientMiddleware<RetryOptions> =
     }
   };
 
+/** Map of server URL to input-plane client. */
+const inputPlaneClients: Record<string, ReturnType<typeof createClient>> = {};
+
+/** Returns a client for the given server URL, creating it if it doesn't exist. */
+export const getOrCreateInputPlaneClient = (
+  serverUrl: string,
+): ReturnType<typeof createClient> => {
+  const client = inputPlaneClients[serverUrl];
+  if (client) {
+    return client;
+  }
+  const profile = { ...clientProfile, serverUrl };
+  const newClient = createClient(profile);
+  inputPlaneClients[serverUrl] = newClient;
+  return newClient;
+};
+
 function createClient(profile: Profile) {
   // Channels don't do anything until you send a request on them.
   // Ref: https://github.com/modal-labs/modal-client/blob/main/modal/_utils/grpc_utils.py
@@ -207,7 +249,6 @@ function createClient(profile: Profile) {
     "grpc.max_send_message_length": 100 * 1024 * 1024,
     "grpc-node.flow_control_window": 64 * 1024 * 1024,
   });
-
   return createClientFactory()
     .use(authMiddleware(profile))
     .use(retryMiddleware)
