@@ -2,7 +2,7 @@
 
 Modal client libraries for JavaScript and Go. **(Alpha)**
 
-This repository provides lightweight alternatives to the [Modal Python Library](https://github.com/modal-labs/modal-client). They let you start sandboxes (secure VMs), call Modal Functions, read or edit Volumes, and manage containers. However, they don't support deploying Modal Functions — those still need to be written in Python!
+This repository provides lightweight alternatives to the [Modal Python Library](https://github.com/modal-labs/modal-client). They let you start sandboxes (secure VMs), call Modal Functions, and manage containers. However, they don't support deploying Modal Functions — those still need to be written in Python!
 
 Each language in this repository has a library with similar features and API, so you can use Modal from any project.
 
