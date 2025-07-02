@@ -6,6 +6,12 @@ Both client libraries are pre-1.0, and they have separate versioning.
 
 No unreleased changes.
 
+## modal-js/v0.3.12, modal-go/v0.0.12
+
+- Added support for passing a Secret to `imageFromRegistry()` (TS) / `ImageFromRegistry()` (Go) to pull images from private registries.
+- Added support for pulling images from Google Artifact Registry with `imageFromGcpArtifactRegistry()` (TS) / `ImageFromGcpArtifactRegistry()` (Go).
+- Added experimental support for calling remote functions deployed with the `input_plane_region` option in Python.
+
 ## modal-js/v0.3.11, modal-go/v0.0.11
 
 - Add `InitializeClient()` (Go) / `initializeClient()` (TS) to initialize the client at runtime with credentials.
