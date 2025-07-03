@@ -110,12 +110,12 @@ type inputPlaneInvocation struct {
 }
 
 // CreateInputPlaneInvocation creates a new InputPlaneInvocation by starting an attempt.
-func createInputPlaneInvocation(ctx context.Context, inputPlaneURL string, functionId string, input *pb.FunctionInput) (*inputPlaneInvocation, error) {
+func createInputPlaneInvocation(ctx context.Context, inputPlaneUrl string, functionId string, input *pb.FunctionInput) (*inputPlaneInvocation, error) {
 	functionPutInputsItem := pb.FunctionPutInputsItem_builder{
 		Idx:   0,
 		Input: input,
 	}.Build()
-	client, err := getOrCreateInputPlaneClient(inputPlaneURL)
+	client, err := getOrCreateInputPlaneClient(inputPlaneUrl)
 	if err != nil {
 		return nil, err
 	}

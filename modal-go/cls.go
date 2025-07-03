@@ -20,7 +20,7 @@ type Cls struct {
 	serviceFunctionId string
 	schema            []*pb.ClassParameterSpec
 	methodNames       []string
-	inputPlaneUrl     *string // if nil, use control plane
+	inputPlaneUrl     string // if empty, use control plane
 }
 
 // ClsLookup looks up an existing Cls on a deployed App.
@@ -67,9 +67,8 @@ func ClsLookup(ctx context.Context, appName string, name string, options *Lookup
 	cls.serviceFunctionId = serviceFunction.GetFunctionId()
 
 	// Check if we have method metadata on the class service function (v0.67+)
-	serviceFunctionHandleMetadata := serviceFunction.GetHandleMetadata()
-	if serviceFunctionHandleMetadata != nil && serviceFunctionHandleMetadata.GetMethodHandleMetadata() != nil {
-		for methodName := range serviceFunctionHandleMetadata.GetMethodHandleMetadata() {
+	if serviceFunction.GetHandleMetadata().GetMethodHandleMetadata() != nil {
+		for methodName := range serviceFunction.GetHandleMetadata().GetMethodHandleMetadata() {
 			cls.methodNames = append(cls.methodNames, methodName)
 		}
 	} else {
@@ -77,10 +76,8 @@ func ClsLookup(ctx context.Context, appName string, name string, options *Lookup
 		return nil, fmt.Errorf("Cls requires Modal deployments using client v0.67 or later")
 	}
 
-	if serviceFunctionHandleMetadata != nil {
-		if inputPlaneUrl := serviceFunctionHandleMetadata.GetInputPlaneUrl(); inputPlaneUrl != "" {
-			cls.inputPlaneUrl = &inputPlaneUrl
-		}
+	if inputPlaneUrl := serviceFunction.GetHandleMetadata().GetInputPlaneUrl(); inputPlaneUrl != "" {
+		cls.inputPlaneUrl = inputPlaneUrl
 	}
 
 	return &cls, nil
@@ -107,7 +104,7 @@ func (c *Cls) Instance(params map[string]any) (*ClsInstance, error) {
 		methods[name] = &Function{
 			FunctionId:    functionId,
 			MethodName:    &name,
-			InputPlaneURL: c.inputPlaneUrl,
+			inputPlaneUrl: c.inputPlaneUrl,
 			ctx:           c.ctx,
 		}
 	}

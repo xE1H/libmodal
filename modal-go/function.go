@@ -36,7 +36,7 @@ func timeNowSeconds() float64 {
 type Function struct {
 	FunctionId    string
 	MethodName    *string // used for class methods
-	InputPlaneURL *string // if nil, use control plane
+	inputPlaneUrl string  // if empty, use control plane
 	ctx           context.Context
 }
 
@@ -64,13 +64,13 @@ func FunctionLookup(ctx context.Context, appName string, name string, options *L
 		return nil, err
 	}
 
-	var inputPlaneUrl *string
+	var inputPlaneUrl string
 	if meta := resp.GetHandleMetadata(); meta != nil {
 		if url := meta.GetInputPlaneUrl(); url != "" {
-			inputPlaneUrl = &url
+			inputPlaneUrl = url
 		}
 	}
-	return &Function{FunctionId: resp.GetFunctionId(), InputPlaneURL: inputPlaneUrl, ctx: ctx}, nil
+	return &Function{FunctionId: resp.GetFunctionId(), inputPlaneUrl: inputPlaneUrl, ctx: ctx}, nil
 }
 
 // Serialize Go data types to the Python pickle format.
@@ -152,8 +152,8 @@ func (f *Function) Remote(args []any, kwargs map[string]any) (any, error) {
 
 // createRemoteInvocation creates an Invocation using either the input plane or control plane.
 func (f *Function) createRemoteInvocation(input *pb.FunctionInput) (invocation, error) {
-	if f.InputPlaneURL != nil {
-		return createInputPlaneInvocation(f.ctx, *f.InputPlaneURL, f.FunctionId, input)
+	if f.inputPlaneUrl != "" {
+		return createInputPlaneInvocation(f.ctx, f.inputPlaneUrl, f.FunctionId, input)
 	}
 	return createControlPlaneInvocation(f.ctx, f.FunctionId, input, pb.FunctionCallInvocationType_FUNCTION_CALL_INVOCATION_TYPE_SYNC)
 }
