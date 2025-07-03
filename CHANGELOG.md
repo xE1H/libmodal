@@ -6,6 +6,11 @@ Both client libraries are pre-1.0, and they have separate versioning.
 
 No unreleased changes.
 
+## modal-js/v0.3.13, modal-go/v0.0.13
+
+- Fixed calls of Cls with experimental `input_plane_region` option.
+- (Go) Removed `Function.InputPlaneURL` from being exposed as public API.
+
 ## modal-js/v0.3.12, modal-go/v0.0.12
 
 - Added support for passing a Secret to `imageFromRegistry()` (TS) / `ImageFromRegistry()` (Go) to pull images from private registries.
