@@ -1,4 +1,7 @@
-import { FileDescriptor } from "../proto/modal_proto/api";
+import {
+  FileDescriptor,
+  GenericResult_GenericStatus,
+} from "../proto/modal_proto/api";
 import { client, isRetryableGrpc } from "./client";
 import {
   runFilesystemExec,
@@ -12,6 +15,7 @@ import {
   toModalReadStream,
   toModalWriteStream,
 } from "./streams";
+import { InvalidError, SandboxTimeoutError } from "./errors";
 
 /**
  * Stdin is always present, but this option allow you to drop stdout or stderr
@@ -42,6 +46,41 @@ export type ExecOptions = {
   timeout?: number;
 };
 
+/** A port forwarded from within a running Modal sandbox. */
+export class Tunnel {
+  /** @ignore */
+  constructor(
+    public host: string,
+    public port: number,
+    public unencryptedHost?: string,
+    public unencryptedPort?: number,
+  ) {}
+
+  /** Get the public HTTPS URL of the forwarded port. */
+  get url(): string {
+    let value = `https://${this.host}`;
+    if (this.port !== 443) {
+      value += `:${this.port}`;
+    }
+    return value;
+  }
+
+  /** Get the public TLS socket as a [host, port] tuple. */
+  get tlsSocket(): [string, number] {
+    return [this.host, this.port];
+  }
+
+  /** Get the public TCP socket as a [host, port] tuple. */
+  get tcpSocket(): [string, number] {
+    if (!this.unencryptedHost || this.unencryptedPort === undefined) {
+      throw new InvalidError(
+        "This tunnel is not configured for unencrypted TCP.",
+      );
+    }
+    return [this.unencryptedHost, this.unencryptedPort];
+  }
+}
+
 /** Sandboxes are secure, isolated containers in Modal that boot in seconds. */
 export class Sandbox {
   readonly sandboxId: string;
@@ -50,6 +89,7 @@ export class Sandbox {
   stderr: ModalReadStream<string>;
 
   #taskId: string | undefined;
+  #tunnels: Record<number, Tunnel> | undefined;
 
   /** @ignore */
   constructor(sandboxId: string) {
@@ -155,6 +195,41 @@ export class Sandbox {
         return resp.result.exitcode;
       }
     }
+  }
+
+  /** Get Tunnel metadata for the sandbox.
+   *
+   * Raises `SandboxTimeoutError` if the tunnels are not available after the timeout.
+   *
+   * @returns A dictionary of Tunnel objects which are keyed by the container port.
+   */
+  async tunnels(timeout = 50000): Promise<Record<number, Tunnel>> {
+    if (this.#tunnels) {
+      return this.#tunnels;
+    }
+
+    const resp = await client.sandboxGetTunnels({
+      sandboxId: this.sandboxId,
+      timeout: timeout / 1000, // Convert to seconds
+    });
+
+    if (
+      resp.result?.status === GenericResult_GenericStatus.GENERIC_STATUS_TIMEOUT
+    ) {
+      throw new SandboxTimeoutError();
+    }
+
+    this.#tunnels = {};
+    for (const t of resp.tunnels) {
+      this.#tunnels[t.containerPort] = new Tunnel(
+        t.host,
+        t.port,
+        t.unencryptedHost,
+        t.unencryptedPort,
+      );
+    }
+
+    return this.#tunnels;
   }
 }
 
