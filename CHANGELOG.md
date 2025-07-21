@@ -4,6 +4,7 @@ Both client libraries are pre-1.0, and they have separate versioning.
 
 ## Unreleased
 
+- Added support for snapshotting the filesystem of a Sandbox.
 - Added support for polling Sandboxes to check if they are still running, or get the exit code.
 
 ## modal-js/v0.3.14, modal-go/v0.0.14
