@@ -298,3 +298,25 @@ func TestSandboxExecSecret(t *testing.T) {
 	g.Expect(err).ShouldNot(gomega.HaveOccurred())
 	g.Expect(string(buf)).Should(gomega.Equal("hello world\n"))
 }
+
+func TestSandboxFromId(t *testing.T) {
+	t.Parallel()
+	g := gomega.NewWithT(t)
+	ctx := context.Background()
+
+	app, err := modal.AppLookup(ctx, "libmodal-test", &modal.LookupOptions{CreateIfMissing: true})
+
+	g.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+	image, err := app.ImageFromRegistry("alpine:3.21", nil)
+	g.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+	sb, err := app.CreateSandbox(image, nil)
+	g.Expect(err).ShouldNot(gomega.HaveOccurred())
+	g.Expect(sb.SandboxId).ShouldNot(gomega.BeEmpty())
+	defer sb.Terminate()
+
+	sbFromId, err := modal.SandboxFromId(ctx, sb.SandboxId)
+	g.Expect(err).ShouldNot(gomega.HaveOccurred())
+	g.Expect(sbFromId.SandboxId).Should(gomega.Equal(sb.SandboxId))
+}

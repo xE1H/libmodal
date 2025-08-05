@@ -1,4 +1,4 @@
-import { App, Volume, Secret } from "modal";
+import { App, Volume, sandboxFromId, Secret } from "modal";
 import { expect, test, onTestFinished } from "vitest";
 
 test("CreateOneSandbox", async () => {
@@ -193,4 +193,16 @@ test("SandboxExecSecret", async () => {
   });
   const secretText = await printSecret.stdout.readText();
   expect(secretText).toBe("hello world\n");
+});
+
+test("SandboxFromId", async () => {
+  const app = await App.lookup("libmodal-test", { createIfMissing: true });
+  const image = await app.imageFromRegistry("alpine:3.21");
+
+  const sb = await app.createSandbox(image);
+  onTestFinished(async () => {
+    await sb.terminate();
+  });
+  const sbFromId = await sandboxFromId(sb.sandboxId);
+  expect(sbFromId.sandboxId).toBe(sb.sandboxId);
 });
