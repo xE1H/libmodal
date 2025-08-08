@@ -378,7 +378,7 @@ export class ContainerProcess<R extends string | Uint8Array = any> {
     while (true) {
       const resp = await client.containerExecWait({
         execId: this.#execId,
-        timeout: 55,
+        timeout: 0,
       });
       if (resp.completed) {
         return resp.exitCode ?? 0;
